@@ -1,0 +1,3 @@
+C:/Users/Administrator/Desktop/GideonInspired/Chess2.0/Engines2.0/Prometheus/build/CMakeFiles/Prometheus.dir
+C:/Users/Administrator/Desktop/GideonInspired/Chess2.0/Engines2.0/Prometheus/build/CMakeFiles/edit_cache.dir
+C:/Users/Administrator/Desktop/GideonInspired/Chess2.0/Engines2.0/Prometheus/build/CMakeFiles/rebuild_cache.dir
