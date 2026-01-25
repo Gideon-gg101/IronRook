@@ -83,7 +83,7 @@
   "test_settings": {
     "engine_path": "../build/Prometheus.exe",
     "baseline_path": "../baseline/Prometheus.exe",
-    "time_control": "depth=8",
+    "time_control": "0.05+0",
     "opening_book": null,
     "threads": 1,
     "hash": 16
