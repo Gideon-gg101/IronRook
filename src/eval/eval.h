@@ -49,10 +49,6 @@ extern int IIDReductionNonPV; // Depth reduction for non-PV IID
 extern int MultiCutThreshold; // Number of beta cutoffs before multi-cut
 extern int MultiCutMinDepth;  // Minimum depth for multi-cut pruning
 
-// Razoring
-extern int RazoringDepth;  // Maximum depth for razoring
-extern int RazoringMargin; // Margin per depth for razoring
-
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
 constexpr int VALUE_KNIGHT = 320;

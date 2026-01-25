@@ -89,8 +89,8 @@
     "A": 100
   },
   "test_settings": {
-    "engine_path": "build/Prometheus.exe",
-    "baseline_path": "build/Prometheus_baseline.exe",
+    "engine_path": "../build/Prometheus.exe",
+    "baseline_path": "../build/Prometheus.exe",
     "time_control": "10+0.1",
     "opening_book": null,
     "threads": 1,

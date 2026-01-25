@@ -68,10 +68,6 @@ void ParameterTuner::register_params() {
   // Multi-Cut Pruning
   add_param("MultiCutThreshold", &Eval::MultiCutThreshold, 2, 5);
   add_param("MultiCutMinDepth", &Eval::MultiCutMinDepth, 3, 6);
-
-  // Razoring
-  add_param("RazoringDepth", &Eval::RazoringDepth, 2, 4);
-  add_param("RazoringMargin", &Eval::RazoringMargin, 200, 500);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {

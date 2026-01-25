@@ -115,10 +115,6 @@ int IIDReductionNonPV = 3; // Depth reduction for non-PV IID
 int MultiCutThreshold = 3; // Stockfish uses 3
 int MultiCutMinDepth = 4;  // Only apply at sufficient depth
 
-// Razoring Parameters
-int RazoringDepth = 3;    // Only at very shallow depths
-int RazoringMargin = 300; // 300cp margin per depth
-
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);
