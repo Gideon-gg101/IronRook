@@ -90,7 +90,7 @@ jobs:
         shell: pwsh
         run: |
           cd tools
-          python spsa_tuner.py --config ../config_ci.json
+          python spsa_tuner.py ../config_ci.json
         timeout-minutes: 300  # 5 hours for tuning itself
         
       - name: Export Tuned Parameters
