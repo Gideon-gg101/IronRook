@@ -58,6 +58,11 @@ extern int ProbcutReduction; // Depth reduction for probcut search
 extern int FutilityMargin;   // Margin per depth for futility pruning
 extern int FutilityMaxDepth; // Maximum depth for futility pruning
 
+// Late Move Pruning (LMP)
+extern int LMPBaseCount;     // Base move count for LMP
+extern int LMPMaxDepth;      // Maximum depth for LMP
+extern int LMPMarginDivisor; // Eval margin divisor for dynamic count
+
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
 constexpr int VALUE_KNIGHT = 320;

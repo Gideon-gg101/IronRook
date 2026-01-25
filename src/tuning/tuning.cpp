@@ -77,6 +77,11 @@ void ParameterTuner::register_params() {
   // Futility Pruning
   add_param("FutilityMargin", &Eval::FutilityMargin, 80, 180);
   add_param("FutilityMaxDepth", &Eval::FutilityMaxDepth, 5, 9);
+
+  // Late Move Pruning (LMP)
+  add_param("LMPBaseCount", &Eval::LMPBaseCount, 2, 5);
+  add_param("LMPMaxDepth", &Eval::LMPMaxDepth, 6, 10);
+  add_param("LMPMarginDivisor", &Eval::LMPMarginDivisor, 50, 150);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {

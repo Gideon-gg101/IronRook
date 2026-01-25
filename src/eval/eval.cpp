@@ -124,6 +124,11 @@ int ProbcutReduction = 4; // Depth reduction
 int FutilityMargin = 120; // Current: 120cp per depth
 int FutilityMaxDepth = 7; // Current: depth <= 7
 
+// Late Move Pruning (LMP) Parameters
+int LMPBaseCount = 3;       // Base: 3 + depth^2
+int LMPMaxDepth = 8;        // Max depth for LMP
+int LMPMarginDivisor = 100; // Eval margin / 100
+
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);

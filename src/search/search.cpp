@@ -765,16 +765,16 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
       }
     }
 
-    // Dynamic LMP (Late Move Pruning)
-    // G+ 3: Smarter LMP with eval margin
-    if (!pvNode && !inCheck && is_quiet && depth <= 8) {
+    // Late Move Pruning (LMP): skip late quiet moves
+    // Dynamic count based on depth and position evaluation
+    if (!pvNode && !inCheck && is_quiet && depth <= Eval::LMPMaxDepth) {
       int eval_margin = staticEval - alpha;
-      int lmp_count = (3 + depth * depth);
+      int lmp_count = Eval::LMPBaseCount + depth * depth;
       if (eval_margin > 0)
-        lmp_count += eval_margin / 100;
+        lmp_count += eval_margin / Eval::LMPMarginDivisor;
 
       if (moves_searched >= lmp_count) {
-        continue;
+        continue; // Skip this late quiet move
       }
     }
 
