@@ -1,5 +1,4 @@
 {
-  "iterations": 20,
   "parameters": [
     {
       "name": "LazyEvalMargin",
@@ -7,7 +6,7 @@
       "min": 100,
       "max": 250,
       "c": 15,
-      "a_end": 0.01
+      "c_end": 7.5
     },
     {
       "name": "NMPBaseReductionMG",
@@ -15,7 +14,7 @@
       "min": 2,
       "max": 4,
       "c": 0.2,
-      "a_end": 0.005
+      "c_end": 0.1
     },
     {
       "name": "NMPBaseReductionEG",
@@ -23,7 +22,7 @@
       "min": 2,
       "max": 4,
       "c": 0.2,
-      "a_end": 0.005
+      "c_end": 0.1
     },
     {
       "name": "AspirationWindow",
@@ -31,7 +30,7 @@
       "min": 15,
       "max": 40,
       "c": 2,
-      "a_end": 0.005
+      "c_end": 1
     },
     {
       "name": "LMRBaseReduction",
@@ -39,7 +38,7 @@
       "min": 50,
       "max": 100,
       "c": 5,
-      "a_end": 0.01
+      "c_end": 2.5
     },
     {
       "name": "LMRDepthDivisor",
@@ -47,7 +46,7 @@
       "min": 150,
       "max": 300,
       "c": 15,
-      "a_end": 0.01
+      "c_end": 7.5
     },
     {
       "name": "IIDMinDepthPV",
@@ -55,7 +54,7 @@
       "min": 4,
       "max": 8,
       "c": 0.4,
-      "a_end": 0.005
+      "c_end": 0.2
     },
     {
       "name": "IIDReductionPV",
@@ -63,7 +62,7 @@
       "min": 1,
       "max": 3,
       "c": 0.2,
-      "a_end": 0.005
+      "c_end": 0.1
     },
     {
       "name": "EvalHysteresis",
@@ -71,15 +70,22 @@
       "min": 0,
       "max": 15,
       "c": 1.5,
-      "a_end": 0.005
+      "c_end": 0.75
     }
   ],
-  "games_per_iteration": 20,
-  "engine_path": "../build/Prometheus.exe",
-  "baseline_path": "../baseline/Prometheus.exe",
-  "time_control": "depth=8",
-  "opening_book": "openings.pgn",
-  "threads": 1,
-  "hash": 16,
-  "output_dir": "spsa_output_ci"
+  "spsa_settings": {
+    "iterations": 20,
+    "games_per_iteration": 20,
+    "alpha": 0.602,
+    "gamma": 0.101,
+    "A": 10
+  },
+  "test_settings": {
+    "engine_path": "../build/Prometheus.exe",
+    "baseline_path": "../baseline/Prometheus.exe",
+    "time_control": "depth=8",
+    "opening_book": null,
+    "threads": 1,
+    "hash": 16
+  }
 }
