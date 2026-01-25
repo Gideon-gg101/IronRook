@@ -1,0 +1,47 @@
+# Build directories
+build/
+build_*/
+cmake-build-*/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Output
+*.exe
+*.dll
+*.o
+*.obj
+*.lib
+*.a
+*.log
+*.txt
+spsa_output*/
+output/
+
+# Params (keep in artifacts)
+params.json
+*_params.json
+checkpoint_*.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary
+*.tmp
+temp/
+tmp/
