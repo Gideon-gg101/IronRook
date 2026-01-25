@@ -54,6 +54,10 @@ extern int ProbcutMargin;    // Beta margin for probcut
 extern int ProbcutMinDepth;  // Minimum depth for probcut
 extern int ProbcutReduction; // Depth reduction for probcut search
 
+// Futility Pruning
+extern int FutilityMargin;   // Margin per depth for futility pruning
+extern int FutilityMaxDepth; // Maximum depth for futility pruning
+
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
 constexpr int VALUE_KNIGHT = 320;

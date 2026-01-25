@@ -73,6 +73,10 @@ void ParameterTuner::register_params() {
   add_param("ProbcutMargin", &Eval::ProbcutMargin, 100, 300);
   add_param("ProbcutMinDepth", &Eval::ProbcutMinDepth, 4, 7);
   add_param("ProbcutReduction", &Eval::ProbcutReduction, 3, 5);
+
+  // Futility Pruning
+  add_param("FutilityMargin", &Eval::FutilityMargin, 80, 180);
+  add_param("FutilityMaxDepth", &Eval::FutilityMaxDepth, 5, 9);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {

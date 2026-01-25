@@ -787,16 +787,13 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
         continue;
     }
 
-    // Futility Pruning
-    // Absolutely NO Futility in PV nodes, In Check, or (implied) tactical
-    // moves Request: "Absolutely no ... when: PV node" G+ 1: Disable futility
-    // in PV
-    if (!pvNode && depth <= 7 && is_quiet && !inCheck && alpha < 20000 &&
-        beta < 20000 && moves_searched > 0) {
-
-      int fMargin = 120 * depth;
+    // Futility Pruning: skip moves unlikely to raise alpha
+    // Only in non-PV, quiet, non-check positions
+    if (!pvNode && depth <= Eval::FutilityMaxDepth && is_quiet && !inCheck &&
+        alpha < 20000 && beta < 20000 && moves_searched > 0) {
+      int fMargin = Eval::FutilityMargin * depth;
       if (staticEval + fMargin <= alpha) {
-        continue;
+        continue; // Position too bad, skip this move
       }
     }
 

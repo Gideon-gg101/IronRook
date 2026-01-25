@@ -120,6 +120,10 @@ int ProbcutMargin = 200;  // Beta margin
 int ProbcutMinDepth = 5;  // Minimum depth
 int ProbcutReduction = 4; // Depth reduction
 
+// Futility Pruning Parameters
+int FutilityMargin = 120; // Current: 120cp per depth
+int FutilityMaxDepth = 7; // Current: depth <= 7
+
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);
