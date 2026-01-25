@@ -49,6 +49,11 @@ extern int IIDReductionNonPV; // Depth reduction for non-PV IID
 extern int MultiCutThreshold; // Number of beta cutoffs before multi-cut
 extern int MultiCutMinDepth;  // Minimum depth for multi-cut pruning
 
+// Probcut
+extern int ProbcutMargin;    // Beta margin for probcut
+extern int ProbcutMinDepth;  // Minimum depth for probcut
+extern int ProbcutReduction; // Depth reduction for probcut search
+
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
 constexpr int VALUE_KNIGHT = 320;

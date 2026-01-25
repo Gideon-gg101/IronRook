@@ -115,6 +115,11 @@ int IIDReductionNonPV = 3; // Depth reduction for non-PV IID
 int MultiCutThreshold = 3; // Stockfish uses 3
 int MultiCutMinDepth = 4;  // Only apply at sufficient depth
 
+// Probcut Parameters
+int ProbcutMargin = 200;  // Beta margin
+int ProbcutMinDepth = 5;  // Minimum depth
+int ProbcutReduction = 4; // Depth reduction
+
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);

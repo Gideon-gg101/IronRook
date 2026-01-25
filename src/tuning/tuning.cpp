@@ -68,6 +68,11 @@ void ParameterTuner::register_params() {
   // Multi-Cut Pruning
   add_param("MultiCutThreshold", &Eval::MultiCutThreshold, 2, 5);
   add_param("MultiCutMinDepth", &Eval::MultiCutMinDepth, 3, 6);
+
+  // Probcut
+  add_param("ProbcutMargin", &Eval::ProbcutMargin, 100, 300);
+  add_param("ProbcutMinDepth", &Eval::ProbcutMinDepth, 4, 7);
+  add_param("ProbcutReduction", &Eval::ProbcutReduction, 3, 5);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {

@@ -693,23 +693,21 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     static_evals[ply] = staticEval;
   bool improving = (ply >= 2 && staticEval > static_evals[ply - 2]);
 
-  // ProbCut
-  // Absolutely NO ProbCut in PV nodes
-  if (!pvNode && depth >= 5 &&
-      ((int)beta >= 0 ? (int)beta : -(int)beta) < MATE && !inCheck) {
-    int margin = 200;
-    int reducedDepth = depth - 4;
+  // ProbCut: Early cutoff with shallow verification
+  // No ProbCut in PV nodes or near mate scores
+  if (!pvNode && depth >= Eval::ProbcutMinDepth && std::abs(beta) < MATE &&
+      !inCheck) {
+    int probBeta = beta + Eval::ProbcutMargin;
+    int reducedDepth = depth - Eval::ProbcutReduction;
     if (reducedDepth < 1)
       reducedDepth = 1;
-
-    int probBeta = beta + margin;
 
     int score = alpha_beta(board, reducedDepth, ply + 1, probBeta - 1, probBeta,
                            nodes, Move::NONE, prevMove);
 
     if (score >= probBeta) {
-      TT.save(board.key, score, BOUND_LOWER, depth, Move::NONE, 0, ply);
-      return beta;
+      TT.save(board.key, beta, BOUND_LOWER, depth, Move::NONE, 0, ply);
+      return beta; // Verified cutoff!
     }
   }
 
