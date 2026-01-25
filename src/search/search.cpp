@@ -682,11 +682,20 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     return quiescence(board, alpha, beta, nodes, 0, ply);
   }
 
-  // Razoring (Commented out in original, leaving out for now)
-
+  // Get static evaluation if we don't have it yet
   if (staticEval == 30001) {
     staticEval = Eval::evaluate(board, alpha, beta, depth);
     staticEval += get_correction(board.side_to_move(), board);
+  }
+
+  // Razoring: Forward prune when position is losing badly
+  if (!pvNode && !inCheck && depth <= Eval::RazoringDepth &&
+      staticEval + Eval::RazoringMargin * depth < alpha) {
+    // Position looks bad - verify with quiescence search
+    int qscore = quiescence(board, alpha, beta, nodes, 0, ply);
+    if (qscore < alpha) {
+      return alpha; // Confirmed losing - prune!
+    }
   }
 
   // Position Trend
