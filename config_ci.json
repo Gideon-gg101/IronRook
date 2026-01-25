@@ -3,6 +3,7 @@
   "parameters": [
     {
       "name": "LazyEvalMargin",
+      "start": 150,
       "min": 100,
       "max": 250,
       "c": 15,
@@ -10,6 +11,7 @@
     },
     {
       "name": "NMPBaseReductionMG",
+      "start": 3,
       "min": 2,
       "max": 4,
       "c": 0.2,
@@ -17,6 +19,7 @@
     },
     {
       "name": "NMPBaseReductionEG",
+      "start": 3,
       "min": 2,
       "max": 4,
       "c": 0.2,
@@ -24,6 +27,7 @@
     },
     {
       "name": "AspirationWindow",
+      "start": 25,
       "min": 15,
       "max": 40,
       "c": 2,
@@ -31,6 +35,7 @@
     },
     {
       "name": "LMRBaseReduction",
+      "start": 75,
       "min": 50,
       "max": 100,
       "c": 5,
@@ -38,6 +43,7 @@
     },
     {
       "name": "LMRDepthDivisor",
+      "start": 225,
       "min": 150,
       "max": 300,
       "c": 15,
@@ -45,6 +51,7 @@
     },
     {
       "name": "IIDMinDepthPV",
+      "start": 6,
       "min": 4,
       "max": 8,
       "c": 0.4,
@@ -52,6 +59,7 @@
     },
     {
       "name": "IIDReductionPV",
+      "start": 2,
       "min": 1,
       "max": 3,
       "c": 0.2,
@@ -59,6 +67,7 @@
     },
     {
       "name": "EvalHysteresis",
+      "start": 5,
       "min": 0,
       "max": 15,
       "c": 1.5,
