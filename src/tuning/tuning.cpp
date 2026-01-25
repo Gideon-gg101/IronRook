@@ -64,6 +64,10 @@ void ParameterTuner::register_params() {
   add_param("IIDMinDepthNonPV", &Eval::IIDMinDepthNonPV, 6, 10);
   add_param("IIDReductionPV", &Eval::IIDReductionPV, 1, 3);
   add_param("IIDReductionNonPV", &Eval::IIDReductionNonPV, 2, 4);
+
+  // Multi-Cut Pruning
+  add_param("MultiCutThreshold", &Eval::MultiCutThreshold, 2, 5);
+  add_param("MultiCutMinDepth", &Eval::MultiCutMinDepth, 3, 6);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {

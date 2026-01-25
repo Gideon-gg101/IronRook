@@ -748,6 +748,7 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   Move best_move = Move::NONE;
 
   int moves_searched = 0;
+  int cutoff_count = 0; // Multi-cut: track beta cutoffs
 
   for (int i = 0; i < list.count; ++i) {
     Move m = pick_next_move(list, i);
@@ -892,6 +893,16 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
       }
 
       if (score >= beta) {
+        cutoff_count++; // Multi-cut: increment counter
+
+        // Multi-Cut Pruning: if multiple moves beat beta, prune rest
+        if (!pvNode && cutoff_count >= Eval::MultiCutThreshold &&
+            depth >= Eval::MultiCutMinDepth && moves_searched >= 3) {
+          // Position too strong - opponent won't let us reach here
+          TT.save(board.key, beta, BOUND_LOWER, depth, best_move, 0, ply);
+          return beta; // Early exit!
+        }
+
         TT.save(board.key, score, BOUND_LOWER, depth, best_move, 0, ply);
 
         // Quiet move checks

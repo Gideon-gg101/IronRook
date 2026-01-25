@@ -111,6 +111,10 @@ int IIDMinDepthNonPV = 8;  // Min depth for IID on non-PV nodes
 int IIDReductionPV = 2;    // Depth reduction for PV IID
 int IIDReductionNonPV = 3; // Depth reduction for non-PV IID
 
+// Multi-Cut Pruning Parameters
+int MultiCutThreshold = 3; // Stockfish uses 3
+int MultiCutMinDepth = 4;  // Only apply at sufficient depth
+
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);
