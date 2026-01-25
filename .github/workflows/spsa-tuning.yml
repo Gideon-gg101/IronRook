@@ -84,17 +84,13 @@ jobs:
       - name: Install Python Dependencies
         shell: pwsh
         run: |
-          if (Test-Path "scripts/requirements.txt") {
-            pip install -r scripts/requirements.txt
-          } else {
-            pip install chess python-chess
-          }
+          pip install chess python-chess
           
       - name: Run SPSA Tuning (CI Mode)
         shell: pwsh
         run: |
-          cd scripts
-          python spsa.py --config ../config_ci.json
+          cd tools
+          python spsa_tuner.py --config ../config_ci.json
         timeout-minutes: 300  # 5 hours for tuning itself
         
       - name: Export Tuned Parameters
