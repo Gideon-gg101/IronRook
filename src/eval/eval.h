@@ -24,6 +24,27 @@ extern int HarassedByPawnPenalty;
 extern int OpenFileBonus, SemiOpenFileBonus;
 extern int SpaceSquareBonus;
 
+// Singular Extensions Parameters
+extern int SingularMarginMultiplier; // depth * multiplier for beta margin
+extern int SingularMinDepth;         // minimum depth to apply SE
+
+// LMR (Late Move Reductions) Parameters
+extern int LMRBaseReduction;  // Base formula multiplier (×0.01)
+extern int LMRDepthDivisor;   // Depth log divisor (×0.01)
+extern int LMRHistoryDivisor; // History scaling divisor
+extern int LMRPVReduction;    // PV node reduction decrease
+extern int LMRImprovingBonus; // Not improving penalty
+
+// Eval Hysteresis (Phase 4)
+extern int
+    EvalHysteresis; //  Small deterministic variance to smooth transitions
+
+// Internal Iterative Deepening (IID)
+extern int IIDMinDepthPV;     // Min depth for IID on PV nodes
+extern int IIDMinDepthNonPV;  // Min depth for IID on non-PV nodes
+extern int IIDReductionPV;    // Depth reduction for PV IID
+extern int IIDReductionNonPV; // Depth reduction for non-PV IID
+
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
 constexpr int VALUE_KNIGHT = 320;
@@ -61,8 +82,13 @@ private:
 
 extern EvalTT EvalCache;
 
-// Main Evaluation
-int evaluate(const Board &board);
+// Lazy Evaluation Parameters
+extern int LazyEvalMargin; // Margin outside window to skip full eval
+extern int MaxNonMateEval; // Max eval for non-mate positions
+
+// Main Evaluation (with lazy eval and depth dampening support)
+int evaluate(const Board &board, int alpha = -30000, int beta = 30000,
+             int depth = 0);
 
 } // namespace Eval
 

@@ -23,6 +23,27 @@ Book BookInstance;
 constexpr int INF = 1000000;
 constexpr int MATE = 30000;
 
+// LMR reduction table [depth][moveNumber]
+int LMRTable[64][64];
+
+// Initialize LMR reduction table
+void init_lmr_table() {
+  for (int d = 1; d < 64; d++) {
+    for (int m = 1; m < 64; m++) {
+      // Formula: base + log(depth) * log(moveNum) / divisor
+      // Using tunable parameters from Eval namespace
+      LMRTable[d][m] =
+          int(Eval::LMRBaseReduction / 100.0 +
+              std::log(d) * std::log(m) / (Eval::LMRDepthDivisor / 100.0));
+    }
+  }
+  // Depth 0 and move 0 always have 0 reduction
+  for (int i = 0; i < 64; i++) {
+    LMRTable[0][i] = 0;
+    LMRTable[i][0] = 0;
+  }
+}
+
 static int score_capture(const Board &board, Move m) {
   Piece attacker = board.piece_on(m.from());
   Piece victim = board.piece_on(m.to());
@@ -272,11 +293,11 @@ int SearchWorker::quiescence(Board &board, int alpha, int beta, uint64_t &nodes,
 
   // Guard against deep recursion/stack overflow
   if (ply >= 127) {
-    return Eval::evaluate(board);
+    return Eval::evaluate(board, alpha, beta, 0);
   }
 
   nodes++;
-  int stand_pat = Eval::evaluate(board);
+  int stand_pat = Eval::evaluate(board, alpha, beta, 0);
   if (stand_pat >= beta)
     return beta;
   if (alpha < stand_pat)
@@ -565,7 +586,7 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   }
 
   if (ply >= 64) {
-    return Eval::evaluate(board);
+    return Eval::evaluate(board, alpha, beta, depth);
   }
 
   // Draw Detection (Repetition / 50-move)
@@ -588,10 +609,11 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
 
   // Probe TT
   Move ttMove = Move::NONE;
+  int ttScore = 0;
   TTEntry tte;
   if (TT.probe(board.key, tte)) {
     ttMove = tte.move();
-    int ttScore = tte.score();
+    ttScore = tte.score();
     // Mate score normalization: transform from storage (ply-independent) to
     // search (ply-relative)
     if (ttScore > MATE_BOUND)
@@ -613,14 +635,43 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     }
   }
 
-  // Singular Extensions (Skipped for now, complexity)
+  // Singular Extensions
+  int extension = 0;
+  if (excludedMove == Move::NONE && depth >= Eval::SingularMinDepth &&
+      ttMove != Move::NONE && tte.depth() >= depth - 3 &&
+      (tte.type() == BOUND_LOWER || tte.type() == BOUND_EXACT) && !inCheck &&
+      std::abs(ttScore) < MATE_BOUND) {
+
+    int singularBeta = ttScore - depth * Eval::SingularMarginMultiplier;
+    int singularDepth = depth / 2 - 1;
+
+    int seScore = alpha_beta(board, singularDepth, ply, singularBeta - 1,
+                             singularBeta, nodes, ttMove, prevMove);
+
+    if (seScore < singularBeta) {
+      extension = 1; // TT move is singular!
+    }
+  }
 
   // Internal Iterative Deepening (IID)
-  // Only if PV node or we rely on TT for ordering
-  if (depth >= 6 && ttMove == Move::NONE && !inCheck &&
-      (pvNode || depth >= 8)) {
-    int iidDepth = depth - 2;
+  // Perform reduced-depth search to fill TT when no hash move available
+  int minDepth = pvNode ? Eval::IIDMinDepthPV : Eval::IIDMinDepthNonPV;
+
+  if (depth >= minDepth && ttMove == Move::NONE && !inCheck && !should_stop) {
+    int reduction = pvNode ? Eval::IIDReductionPV : Eval::IIDReductionNonPV;
+
+    // Adaptive reduction: deeper searches reduce more to save time
+    if (depth >= 12)
+      reduction++;
+
+    int iidDepth = depth - reduction;
+    if (iidDepth < 1)
+      iidDepth = 1; // Safety: minimum depth
+
+    // Perform reduced-depth search to populate TT
     alpha_beta(board, iidDepth, ply, alpha, beta, nodes);
+
+    // Retrieve best move from TT
     if (TT.probe(board.key, tte)) {
       ttMove = tte.move();
     }
@@ -634,7 +685,7 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   // Razoring (Commented out in original, leaving out for now)
 
   if (staticEval == 30001) {
-    staticEval = Eval::evaluate(board);
+    staticEval = Eval::evaluate(board, alpha, beta, depth);
     staticEval += get_correction(board.side_to_move(), board);
   }
 
@@ -755,41 +806,48 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     if (copy.make_move(m)) {
       moves_searched++;
 
-      int extension = 0;
+      int moveExtension = 0;
+
+      // SE extension applies to TT move
+      if (m == ttMove) {
+        moveExtension += extension;
+      }
+
+      // Pawn-to-7th extension
       if (is_quiet && depth < 16) {
         Piece p = board.piece_on(m.from());
         int to_rank = m.to() / 8;
         if (p == W_PAWN && to_rank == 6)
-          extension = 1;
+          moveExtension = 1;
         if (p == B_PAWN && to_rank == 1)
-          extension = 1;
+          moveExtension = 1;
       }
 
       int score;
       int reduction = 0;
       if (depth >= 3 && moves_searched > 1 && is_quiet) {
-        reduction = 1 + std::log(depth) * std::log(moves_searched) / 2;
-        reduction -= extension; // Extend instead of reduce
+        // Use pre-computed LMR table instead of runtime log calculation
+        int d_idx = std::min(depth, 63);
+        int m_idx = std::min(moves_searched, 63);
+        reduction = LMRTable[d_idx][m_idx];
 
-        // History-based reduction
+        reduction -= moveExtension; // Extend instead of reduce
+
+        // History-based reduction (using tunable parameter)
         int hist = history[board.side_to_move()][m.from()][m.to()];
-        reduction -= hist / 2000; // Good history = less reduction
+        reduction -= hist / Eval::LMRHistoryDivisor;
 
-        // PV nodes reduce less
+        // PV nodes reduce less (using tunable parameter)
         if (pvNode)
-          reduction -=
-              2; // Aggressive reduction decrease for PV tactical accuracy
+          reduction -= Eval::LMRPVReduction;
 
-        // Check/Promotion already handled by is_quiet check (promotions are
-        // !is_quiet usually? No, m.flags()) is_quiet defined as:
-        // board.piece_on(to) == NO_PIECE && flags != EP_CAPTURE. Promotions
-        // are NOT quiet for LMR purposes usually.
+        // Check/Promotion already handled by is_quiet check
         if (m.flags() >= MoveFlags::PROMOTION_KNIGHT)
           reduction = 0;
 
-        // Not Improving? Increase reduction
+        // Not Improving? Increase reduction (using tunable parameter)
         if (!improving) {
-          reduction += 1;
+          reduction += Eval::LMRImprovingBonus;
         }
 
         if (reduction < 0)
@@ -935,15 +993,15 @@ void SearchWorker::iter_deep() {
 
   auto start_time = std::chrono::high_resolution_clock::now();
 
-  // Syzygy probe (Thread 0 only)
-  if (thread_id == 0 && Bitboards::popcount(board.all_pieces()) <= 7) {
-    int wdl = Syzygy::probe_root_wdl(board);
-    if (wdl != -32001) {
-      int score = Syzygy::wdl_to_score(wdl, 0);
-      std::cout << "info string Syzygy WDL: " << score << " (Win/Loss/Draw)"
-                << std::endl;
-    }
-  }
+  // Syzygy probe (disabled - missing tbprobe.h dependency)
+  // if (thread_id == 0 && Bitboards::popcount(board.all_pieces()) <= 7) {
+  //   int wdl = Syzygy::probe_root_wdl(board);
+  //   if (wdl != -32001) {
+  //     int score = Syzygy::wdl_to_score(wdl, 0);
+  //     std::cout << "info string Syzygy WDL: " << score << " (Win/Loss/Draw)"
+  //               << std::endl;
+  //   }
+  // }
 
   int score = 0; // Initialize score for aspiration window
   rootMoves.clear();

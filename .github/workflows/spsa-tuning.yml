@@ -1,0 +1,138 @@
+name: SPSA Tuning (CI)
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Weekly on Sunday at 2 AM
+  schedule:
+    - cron: '0 2 * * 0'
+
+jobs:
+  spsa-tune:
+    runs-on: windows-latest
+    timeout-minutes: 330  # 5.5 hours max
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+        
+      - name: Download Previous Parameters
+        uses: actions/download-artifact@v4
+        with:
+          name: spsa-params
+          path: .
+        continue-on-error: true  # First run won't have params
+        
+      - name: Import Parameters (if exist)
+        shell: pwsh
+        run: |
+          if (Test-Path "params.json") {
+            Copy-Item params.json build/params.json -Force
+            Write-Output "Imported previous parameters"
+          } else {
+            Write-Output "No previous parameters found, using defaults"
+          }
+        
+      - name: Build Engine
+        shell: pwsh
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -march=native"
+          ninja -C build
+          
+      - name: Create Baseline (copy current)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path baseline
+          Copy-Item build/Prometheus.exe baseline/Prometheus.exe
+          
+      - name: Download cutechess-cli
+        shell: pwsh
+        run: |
+          # Download cutechess-cli for Windows
+          Invoke-WebRequest -Uri "https://github.com/cutechess/cutechess/releases/download/v1.3.1/cutechess-1.3.1-win64.zip" -OutFile cutechess.zip
+          Expand-Archive cutechess.zip -DestinationPath cutechess
+          
+      - name: Create Opening Book (sample)
+        shell: pwsh
+        run: |
+          # Create a simple opening book (e4, d4, Nf3, c4)
+          @'
+          [Event "Opening Book"]
+          [White "Sample"]
+          [Black "Sample"]
+
+          1. e4 *
+
+          [Event "Opening Book"]
+          1. d4 *
+
+          [Event "Opening Book"]
+          1. Nf3 *
+
+          [Event "Opening Book"]
+          1. c4 *
+          '@ | Out-File -FilePath openings.pgn -Encoding utf8
+          
+      - name: Install Python Dependencies
+        shell: pwsh
+        run: |
+          if (Test-Path "scripts/requirements.txt") {
+            pip install -r scripts/requirements.txt
+          } else {
+            pip install chess python-chess
+          }
+          
+      - name: Run SPSA Tuning (CI Mode)
+        shell: pwsh
+        run: |
+          cd scripts
+          python spsa.py --config ../config_ci.json
+        timeout-minutes: 300  # 5 hours for tuning itself
+        
+      - name: Export Tuned Parameters
+        shell: pwsh
+        run: |
+          # The SPSA script should output params to spsa_output_ci/best_params.json
+          if (Test-Path "spsa_output_ci/best_params.json") {
+            Copy-Item spsa_output_ci/best_params.json params.json
+            Write-Output "Parameters exported successfully"
+          } else {
+            Write-Output "Warning: No output parameters found"
+          }
+          
+      - name: Save Tuned Parameters
+        uses: actions/upload-artifact@v4
+        with:
+          name: spsa-params
+          path: params.json
+          retention-days: 90  # Keep for 3 months
+          
+      - name: Save Tuning Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: spsa-log-${{ github.run_number }}
+          path: |
+            spsa_output_ci/log.txt
+            spsa_output_ci/results.json
+          retention-days: 30
+          
+      - name: Post Results Summary
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Output "=== SPSA Tuning Complete ==="
+          if (Test-Path "spsa_output_ci/results.json") {
+            Get-Content spsa_output_ci/results.json
+          }
+          if (Test-Path "params.json") {
+            Write-Output "`nFinal Parameters:"
+            Get-Content params.json
+          }

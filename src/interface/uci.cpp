@@ -23,6 +23,9 @@ void loop() {
   // Register tunable parameters
   Tuning::GlobalTuner.register_params();
 
+  // Initialize LMR reduction table
+  Search::init_lmr_table();
+
   std::string line, token;
   while (std::getline(std::cin, line)) {
     if (line.empty())
@@ -73,7 +76,7 @@ void loop() {
             size_t first = path.find_first_not_of(' ');
             if (first != std::string::npos)
               path = path.substr(first);
-            Syzygy::init(path);
+            // Syzygy::init(path); // Disabled - missing tbprobe.h dependency
           }
         } else if (name == "Threads") {
           ss >> val;
@@ -190,6 +193,20 @@ void loop() {
     } else if (token == "expdecay") {
       Search::GlobalExperience.decay();
       std::cout << "info string Experience cache decayed." << std::endl;
+    } else if (token == "exportparams") {
+      std::string filename;
+      if (ss >> filename) {
+        Tuning::GlobalTuner.export_params(filename);
+      } else {
+        std::cout << "Usage: exportparams <filename>" << std::endl;
+      }
+    } else if (token == "importparams") {
+      std::string filename;
+      if (ss >> filename) {
+        Tuning::GlobalTuner.import_params(filename);
+      } else {
+        std::cout << "Usage: importparams <filename>" << std::endl;
+      }
     } else if (token == "tune") {
       std::string filename;
       int iter = 1000;

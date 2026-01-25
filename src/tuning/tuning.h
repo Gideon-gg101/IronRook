@@ -25,6 +25,10 @@ public:
 
   std::vector<TunableParam> &get_params_list() { return params; }
 
+  // Parameter export/import for SPSA tuning
+  void export_params(const std::string &filename);
+  void import_params(const std::string &filename);
+
   // Future: SPSA implementation
   void run_spsa(int iterations);
 

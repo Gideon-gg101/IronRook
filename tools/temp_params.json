@@ -1,0 +1,12 @@
+{
+  "BishopPairMG": 19,
+  "BishopPairEG": 42,
+  "OutpostBonus": 21,
+  "PermanentOutpostBonus": 26,
+  "HarassedByPawnPenalty": 48,
+  "OpenFileBonus": 14,
+  "SemiOpenFileBonus": 7,
+  "SpaceSquareBonus": 4,
+  "SingularMargin": 2,
+  "SingularMinDepth": 9
+}

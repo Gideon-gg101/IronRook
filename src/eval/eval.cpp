@@ -86,6 +86,31 @@ int OpenFileBonus = 15;
 int SemiOpenFileBonus = 8;
 int SpaceSquareBonus = 5;
 
+// Singular Extensions Parameters
+int SingularMarginMultiplier = 2; // depth * 2 centipawns
+int SingularMinDepth = 8;         // minimum depth for SE
+
+// Lazy Evaluation & Noise Control Parameters
+int LazyEvalMargin = 150;  // Margin for lazy eval (in centipawns)
+int MaxNonMateEval = 2000; // Max eval for non-mate positions (+/- 20 pawns)
+
+// LMR (Late Move Reductions) Parameters
+int LMRBaseReduction = 75;    // Base: 0.75 (×100)
+int LMRDepthDivisor = 225;    // Divisor: 2.25 (×100)
+int LMRHistoryDivisor = 2000; // History scaling
+int LMRPVReduction = 2;       // PV reduction decrease
+int LMRImprovingBonus = 1;    // Not improving penalty
+
+// Hysteresis Parameter (Eval Noise Phase 4)
+int EvalHysteresis =
+    5; // Small deterministic noise (0-10 cp) to smooth eval transitions
+
+// Internal Iterative Deepening (IID) Parameters
+int IIDMinDepthPV = 6;     // Min depth for IID on PV nodes
+int IIDMinDepthNonPV = 8;  // Min depth for IID on non-PV nodes
+int IIDReductionPV = 2;    // Depth reduction for PV IID
+int IIDReductionNonPV = 3; // Depth reduction for non-PV IID
+
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);
@@ -445,7 +470,7 @@ int evaluate_pieces(const Board &board, Color side) {
   return score;
 }
 
-int evaluate(const Board &board) {
+int evaluate(const Board &board, int alpha, int beta, int depth) {
   int cached;
   if (EvalCache.probe(board.key, cached)) {
     return (board.side_to_move() == WHITE) ? cached : -cached;
@@ -454,6 +479,26 @@ int evaluate(const Board &board) {
   int mg_score = board.mg_value;
   int eg_score = board.eg_value;
   int phase = board.phase_value;
+
+  // === LAZY EVALUATION ===
+  // Quick tapered eval from material + PST only
+  if (phase > PST::TotalPhaseMax)
+    phase = PST::TotalPhaseMax;
+
+  int lazy_score =
+      (mg_score * phase + eg_score * (PST::TotalPhaseMax - phase)) /
+      PST::TotalPhaseMax;
+
+  // If score is far outside [alpha-margin, beta+margin], return early
+  // This skips expensive evaluation (king safety, mobility, threats, etc.)
+  if (lazy_score < alpha - LazyEvalMargin ||
+      lazy_score > beta + LazyEvalMargin) {
+    // Apply perspective and return
+    int result = (board.side_to_move() == WHITE) ? lazy_score : -lazy_score;
+    return result;
+  }
+
+  // === FULL EVALUATION (within window) ===
 
   // Pawn Structure
   ScorePair pawn_score = evaluate_pawns(board, GlobalPawnTable);
@@ -526,6 +571,40 @@ int evaluate(const Board &board) {
 
   score += es.score_bonus;
   score = (score * es.scale_factor) / 64;
+
+  // === EVAL CLAMPING (Noise Control) ===
+  // Clamp non-mate scores to prevent extreme outliers
+  // This prevents pruning misfires from unstable eval
+  constexpr int MATE_THRESHOLD = 29000; // Mate scores start at ±30000
+  if (std::abs(score) < MATE_THRESHOLD) {
+    score = std::max(-MaxNonMateEval, std::min(MaxNonMateEval, score));
+  }
+
+  // === DEPTH DAMPENING (Noise Control) ===
+  // Reduce positional evaluation components at shallow depths
+  // King safety and threats are less reliable with limited lookahead
+  if (depth >= 0 && depth < 6) {
+    // Separate material from positional components
+    int material_score = (board.mg_value * phase +
+                          board.eg_value * (PST::TotalPhaseMax - phase)) /
+                         PST::TotalPhaseMax;
+    int positional = score - material_score;
+
+    // Dampen positional score: 50% at d=0, 60% at d=1, ... 100% at d=5+
+    int dampen_factor = 50 + depth * 10; // Linear scaling
+    positional = (positional * dampen_factor) / 100;
+
+    score = material_score + positional;
+  }
+
+  // === EVAL HYSTERESIS (Noise Control Phase 4) ===
+  // Add small deterministic variance to prevent rapid eval oscillation
+  // Uses zobrist key for determinism (same position always gets same variance)
+  if (EvalHysteresis > 0 && std::abs(score) < MATE_THRESHOLD) {
+    int variance =
+        (int)((board.key % (2 * EvalHysteresis + 1))) - EvalHysteresis;
+    score += variance;
+  }
 
   EvalCache.save(board.key, score);
 

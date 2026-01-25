@@ -18,6 +18,10 @@ namespace Prometheus {
 
 namespace Search {
 
+// LMR (Late Move Reductions) pre-computed table
+extern int LMRTable[64][64]; // [depth][moveNumber]
+void init_lmr_table();       // Initialize reduction table
+
 struct SearchLimits {
   int depth = 0;
   int nodes = 0;

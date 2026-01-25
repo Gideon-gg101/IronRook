@@ -1,0 +1,41 @@
+{
+    "parameters": [
+        {
+            "name": "BishopPairMG",
+            "min": 15,
+            "max": 30,
+            "start": 20,
+            "c": 2.0,
+            "c_end": 1.0
+        },
+        {
+            "name": "SingularMargin",
+            "min": 1,
+            "max": 4,
+            "start": 2,
+            "c": 0.5,
+            "c_end": 0.25
+        },
+        {
+            "name": "OutpostBonus",
+            "min": 10,
+            "max": 30,
+            "start": 20,
+            "c": 2.0,
+            "c_end": 1.0
+        }
+    ],
+    "spsa_settings": {
+        "iterations": 10,
+        "games_per_iteration": 20,
+        "alpha": 0.602,
+        "gamma": 0.101,
+        "A": 10
+    },
+    "test_settings": {
+        "engine_path": "../build/Prometheus.exe",
+        "time_control": "5+0.05",
+        "threads": 1,
+        "hash": 64
+    }
+}
