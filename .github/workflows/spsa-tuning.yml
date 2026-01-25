@@ -84,7 +84,7 @@ jobs:
       - name: Install Python Dependencies
         shell: pwsh
         run: |
-          pip install chess python-chess
+          pip install chess python-chess numpy
           
       - name: Run SPSA Tuning (CI Mode)
         shell: pwsh
