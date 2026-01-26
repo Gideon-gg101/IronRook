@@ -43,6 +43,30 @@ enum TTBound {
 };
 
 constexpr int MATE_SCORE = 30000;
+constexpr int MATE_MAX_PLY = 128; // Assuming 128 max ply
+
+// Mate Score Normalization
+// We store mate scores relative to current ply to avoid off-by-one errors
+// when using TT entries from different depths/paths.
+inline int16_t score_to_tt(int score, int ply) {
+  if (score >= MATE_SCORE - MATE_MAX_PLY) {
+    return (int16_t)(score + ply);
+  }
+  if (score <= -MATE_SCORE + MATE_MAX_PLY) {
+    return (int16_t)(score - ply);
+  }
+  return (int16_t)score;
+}
+
+inline int score_from_tt(int16_t score, int ply) {
+  if (score >= MATE_SCORE - MATE_MAX_PLY) {
+    return (int)(score - ply);
+  }
+  if (score <= -MATE_SCORE + MATE_MAX_PLY) {
+    return (int)(score + ply);
+  }
+  return (int)score;
+}
 constexpr int MATE_BOUND = 29000;
 
 class TranspositionTable {

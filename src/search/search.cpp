@@ -566,9 +566,11 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
   // If we found a best move updates alpha, it is exact if we searched full
   // window. With aspiration, we might return bound.
   if (best_score <= alphaOrig) { // Fail low
-    TT.save(board.key, best_score, BOUND_UPPER, depth, best_move, 0, 0);
+    TT.save(board.key, score_to_tt(best_score, 0), BOUND_UPPER, depth,
+            best_move, 0, 0);
   } else {
-    TT.save(board.key, best_score, BOUND_EXACT, depth, best_move, 0, 0);
+    TT.save(board.key, score_to_tt(best_score, 0), BOUND_EXACT, depth,
+            best_move, 0, 0);
   }
 
   return best_score;
@@ -589,10 +591,46 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     return Eval::evaluate(board, alpha, beta, depth);
   }
 
-  // Draw Detection (Repetition / 50-move)
-  if (board.half_move_clock() >= 100 || board.is_repetition()) {
-    return -limits.contempt;
+  // Check Probing of TT
+  TTEntry tte;
+  // Use normalized score from TT
+  int tt_eval = -INF;
+  if (TT.probe(board.key, tte)) {
+    ttMove = tte.move();
+    // Normalize score from TT perspective to search perspective
+    tt_eval = score_from_tt(tte.score(), ply);
+
+    // ... TT cutoff logic ... (omitted for brevity, assume we update cutoff
+    // check below if needed) Actually, we must use tt_eval for cutoffs
+    if (tte.depth() >= depth && !pvNode) {
+      if (tte.type() == BOUND_EXACT) {
+        return tt_eval;
+      }
+      if (tte.type() == BOUND_LOWER && tt_eval >= beta) {
+        return tt_eval;
+      }
+      if (tte.type() == BOUND_UPPER && tt_eval <= alpha) {
+        return tt_eval;
+      }
+    }
   }
+
+  // Draw Detection: Repetition / 50-move
+  // Optimization: Only check for repetition if we are not at root
+  // and we have enough history.
+  // G+ Repetition Horizon: Don't check forever back?
+  // Board::is_repetition already handles history scan.
+  // We just ensure we don't return draw at root (ply 0 checked locally
+  // usually).
+  if (ply > 0 && (board.half_move_clock() >= 100 || board.is_repetition())) {
+    return -limits.contempt; // Contempt factor for draw
+  }
+
+  // Fail-High/Low Repair (Safety Clamp)
+  if (alpha < -MATE_SCORE + ply)
+    alpha = -MATE_SCORE + ply;
+  if (beta > MATE_SCORE - ply)
+    beta = MATE_SCORE - ply;
 
   // Check Extensions
   bool inCheck = board.is_square_attacked(
@@ -965,9 +1003,21 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   }
 
   if (best_score <= alphaOrig) {
-    TT.save(board.key, best_score, BOUND_UPPER, depth, best_move, 0, ply);
+    // Upper bound: value is at most best_score
+    TT.save(board.key, score_to_tt(best_score, ply), BOUND_UPPER, depth,
+            best_move, 0, ply);
   } else {
-    TT.save(board.key, best_score, BOUND_EXACT, depth, best_move, 0, ply);
+    // Exact or Lower bound (if beta cut)
+    // Actually, if we're here, we have a best_score > alphaOrig.
+    // If it was beta-cutoff, it's lower bound. If result is between alpha-beta,
+    // it's exact. But our search loop logic: if score >= beta return beta. So
+    // if we reach here, we have a move that raised alpha (PV node) or we
+    // searched all moves. If we searched all moves and found one > alphaOrig,
+    // it's exact. Wait, the search loop 'return beta' is earlier. So here, we
+    // found a new PV move (score > alpha).
+    TT.save(board.key, score_to_tt(best_score, ply), BOUND_EXACT, depth,
+            best_move, 0, ply);
+
     // G+ 2.7: Experience Cache Record (Only exact scores at sufficient depth)
     if (depth >= 10 && !should_stop) {
       GlobalExperience.record(board.key, best_score, depth);
