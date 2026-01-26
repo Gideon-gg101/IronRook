@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(Prometheus CXX)
+project(IroonRook CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,13 +50,13 @@ set(SOURCES
 )
 
 # Create executable
-add_executable(Prometheus ${SOURCES})
+add_executable(IroonRook ${SOURCES})
 
 # Link threading library
 find_package(Threads REQUIRED)
-target_link_libraries(Prometheus PRIVATE Threads::Threads)
+target_link_libraries(IroonRook PRIVATE Threads::Threads)
 
 # Platform-specific libraries
 if(WIN32)
-  target_link_libraries(Prometheus PRIVATE ws2_32)
+  target_link_libraries(IroonRook PRIVATE ws2_32)
 endif()

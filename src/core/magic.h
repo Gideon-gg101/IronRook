@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Magic {
 
@@ -18,6 +18,6 @@ Bitboard get_king_attacks(Square sq);
 
 } // namespace Magic
 
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // MAGIC_H

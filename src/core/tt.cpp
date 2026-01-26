@@ -2,7 +2,7 @@
 #include <cstring>
 #include <iostream>
 
-namespace Prometheus {
+namespace IroonRook {
 
 TranspositionTable TT; // Global Instance
 
@@ -69,4 +69,4 @@ int TranspositionTable::hashfull() const {
   return used;
 }
 
-} // namespace Prometheus
+} // namespace IroonRook

@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Search {
 
 ThreadPool Threads;
@@ -151,4 +151,4 @@ void SearchWorker::search() {
 }
 
 } // namespace Search
-} // namespace Prometheus
+} // namespace IroonRook

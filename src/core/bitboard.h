@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Bitboards {
 
@@ -40,6 +40,6 @@ constexpr Square pop_lsb(Bitboard &bb) {
 
 } // namespace Bitboards
 
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // BITBOARD_H

@@ -2,6 +2,7 @@
 #include "../bench.h"
 #include "../board/book.h"
 #include "../board/perft.h"
+#include "../eval/eval.h"
 #include "../search/learning.h"
 #include "../search/search.h"
 #include "../tb/syzygy.h"
@@ -11,7 +12,7 @@
 #include <sstream>
 #include <vector>
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace UCI {
 
@@ -35,7 +36,7 @@ void loop() {
 
     // ...
     if (token == "uci") {
-      std::cout << "id name Prometheus v1.1" << std::endl;
+      std::cout << "id name IroonRook v1.0" << std::endl;
       std::cout << "id author Antigravity" << std::endl;
       std::cout << "option name SyzygyPath type string default <empty>"
                 << std::endl;
@@ -219,6 +220,19 @@ void loop() {
       } else {
         std::cout << "Usage: tune <epd_file> [iterations]" << std::endl;
       }
+    } else if (token == "trace_eval" || token == "eval") {
+      // "eval" or "trace_eval": print static evaluation details
+      // Use trace if cmd is trace_eval or just "eval" for now (useful debug)
+      Eval::EvalTrace trace;
+      int score = Eval::evaluate_trace(board, trace);
+
+      std::cout << "Evaluation Trace for FEN: " << board.to_fen() << std::endl;
+      std::cout << "Total Score: " << score << " cp" << std::endl;
+      std::cout << "--- Features ---" << std::endl;
+      for (auto &term : trace.terms) {
+        std::cout << term.first << ": " << term.second << std::endl;
+      }
+      std::cout << "--- End Trace ---" << std::endl;
     }
   }
 }
@@ -342,4 +356,4 @@ void position(const std::string &command, Board &board) {
 
 } // namespace UCI
 
-} // namespace Prometheus
+} // namespace IroonRook

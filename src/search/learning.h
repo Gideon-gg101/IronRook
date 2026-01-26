@@ -1,12 +1,12 @@
-#ifndef PROMETHEUS_LEARNING_H
-#define PROMETHEUS_LEARNING_H
+#ifndef IroonRook_LEARNING_H
+#define IroonRook_LEARNING_H
 
 #include <cstdint>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Search {
 
 struct ExperienceEntry {
@@ -38,6 +38,6 @@ private:
 extern ExperienceCache GlobalExperience;
 
 } // namespace Search
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif

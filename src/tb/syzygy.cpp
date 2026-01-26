@@ -2,7 +2,7 @@
 #include "tbprobe.h"
 #include <iostream>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Syzygy {
 
 bool init(const std::string &path) { return tb_init(path.c_str()); }
@@ -22,7 +22,7 @@ int probe_wdl(const Board &board) {
   uint64_t knights = board.pieces(KNIGHT);
   uint64_t pawns = board.pieces(PAWN);
 
-  // Castling: Prometheus uses bits 1,2,4,8 logic?
+  // Castling: IroonRook uses bits 1,2,4,8 logic?
   // Board::castling_rights() returns: WK=1, WQ=2, BK=4, BQ=8.
   // Fathom: K=1, Q=2, k=4, q=8. Matches.
   unsigned castling = board.castling_rights();
@@ -98,4 +98,4 @@ int wdl_to_score(int wdl, int ply) {
 }
 
 } // namespace Syzygy
-} // namespace Prometheus
+} // namespace IroonRook

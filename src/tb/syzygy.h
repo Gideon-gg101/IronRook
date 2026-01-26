@@ -4,7 +4,7 @@
 #include "../board/board.h"
 #include <string>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Syzygy {
 
 // Initialize Syzygy tablebases (load files)
@@ -33,6 +33,6 @@ int probe_wdl(const Board &board);
 int wdl_to_score(int wdl, int ply);
 
 } // namespace Syzygy
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // SYZYGY_H

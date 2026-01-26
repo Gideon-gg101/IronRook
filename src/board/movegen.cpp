@@ -2,7 +2,7 @@
 #include "../core/magic.h"
 #include <iostream>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace MoveGen {
 
 void generate_all(const Board &board, MoveList &list) {
@@ -350,4 +350,4 @@ void generate_legal(Board &board, MoveList &list) {
 }
 
 } // namespace MoveGen
-} // namespace Prometheus
+} // namespace IroonRook

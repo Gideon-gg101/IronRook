@@ -4,7 +4,7 @@
 #include "../board/board.h"
 #include "../core/types.h"
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Eval {
 
 // Endgame Scaling Factor (0-64, where 64 = normal, 0 = dead draw)
@@ -23,6 +23,6 @@ struct EndgameScore {
 EndgameScore evaluate_endgame(const Board &board, int score);
 
 } // namespace Eval
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // ENDGAME_H

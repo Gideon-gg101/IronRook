@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cstring> // for memset
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Eval {
 
 PawnTable GlobalPawnTable;
@@ -287,4 +287,4 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
 }
 
 } // namespace Eval
-} // namespace Prometheus
+} // namespace IroonRook

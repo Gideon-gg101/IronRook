@@ -5,7 +5,7 @@
 #include "../core/types.h"
 
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Eval {
 
@@ -48,6 +48,6 @@ struct ScorePair {
 ScorePair evaluate_pawns(const Board &board, PawnTable &pt);
 
 } // namespace Eval
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // PAWN_EVAL_H

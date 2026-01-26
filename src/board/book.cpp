@@ -6,7 +6,7 @@
 #include <iostream>
 #include <random>
 
-namespace Prometheus {
+namespace IroonRook {
 
 // Helper to swap endianness (Polyglot is Big Endian)
 uint16_t swap16(uint16_t v) { return (v << 8) | (v >> 8); }
@@ -223,4 +223,4 @@ uint64_t compute_key(const Board &board) {
 }
 } // namespace Polyglot
 
-} // namespace Prometheus
+} // namespace IroonRook

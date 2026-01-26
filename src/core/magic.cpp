@@ -5,7 +5,7 @@
 #include <cstring>
 #include <vector>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Magic {
 
 Bitboard R_MASKS[64];
@@ -263,4 +263,4 @@ Bitboard get_knight_attacks(Square sq) { return KNIGHT_ATTACKS[sq]; }
 Bitboard get_king_attacks(Square sq) { return KING_ATTACKS[sq]; }
 
 } // namespace Magic
-} // namespace Prometheus
+} // namespace IroonRook

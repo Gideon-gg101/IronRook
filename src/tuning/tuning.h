@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Tuning {
 
 struct TunableParam {
@@ -39,6 +39,6 @@ private:
 extern ParameterTuner GlobalTuner;
 
 } // namespace Tuning
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif

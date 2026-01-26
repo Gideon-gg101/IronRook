@@ -1,7 +1,7 @@
 #include "time_manager.h"
 #include <iostream>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Search {
 
 TimeManager Timer;
@@ -101,4 +101,4 @@ bool TimeManager::should_stop(uint64_t accumulated_nodes) {
 }
 
 } // namespace Search
-} // namespace Prometheus
+} // namespace IroonRook

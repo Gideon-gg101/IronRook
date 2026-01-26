@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Polyglot {
 
 // Standard Polyglot Random64 Array
@@ -275,6 +275,6 @@ constexpr uint64_t Random64[781] = {
 // Source: Fabien Letouzey's Polyglot
 
 } // namespace Polyglot
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // POLYGLOT_KEYS_H

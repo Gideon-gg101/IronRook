@@ -7,7 +7,7 @@
 #include <vector>
 
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Tuning {
 
 struct DataPoint {
@@ -28,6 +28,6 @@ private:
 };
 
 } // namespace Tuning
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif

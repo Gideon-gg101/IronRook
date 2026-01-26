@@ -14,7 +14,7 @@
 #include <windows.h>
 #endif
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Search {
 
@@ -160,6 +160,6 @@ extern Book BookInstance;
 
 } // namespace Search
 
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // SEARCH_H

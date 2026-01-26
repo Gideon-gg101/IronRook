@@ -7,7 +7,7 @@
 #include <random>
 #include <sstream>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Tuning {
 
 std::vector<DataPoint> Tuner::dataset;
@@ -123,4 +123,4 @@ void Tuner::run(int iterations) {
 }
 
 } // namespace Tuning
-} // namespace Prometheus
+} // namespace IroonRook

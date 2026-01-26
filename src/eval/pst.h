@@ -3,7 +3,7 @@
 
 #include "../core/types.h"
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace PST {
 
@@ -115,6 +115,6 @@ inline int eg_king_table[64] = {
     14,  4,   -5,  -17, -53, -34, -21, -11, -28, -14, -24, -43};
 
 } // namespace PST
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // PST_H

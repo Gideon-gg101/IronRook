@@ -1,7 +1,7 @@
 #include "zobrist.h"
 #include <random>
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Zobrist {
 
@@ -34,4 +34,4 @@ void init() {
 
 } // namespace Zobrist
 
-} // namespace Prometheus
+} // namespace IroonRook

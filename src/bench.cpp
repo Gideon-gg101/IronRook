@@ -7,7 +7,7 @@
 #include <thread>
 #include <vector>
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Benchmark {
 
@@ -82,4 +82,4 @@ void bench(int depth) {
 
 } // namespace Benchmark
 
-} // namespace Prometheus
+} // namespace IroonRook

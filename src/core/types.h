@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 
-namespace Prometheus {
+namespace IroonRook {
 
 using Bitboard = uint64_t;
 
@@ -272,6 +272,6 @@ struct Move {
 
 inline const Move Move::NONE(0);
 
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // TYPES_H

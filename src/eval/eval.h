@@ -3,9 +3,12 @@
 #include "../board/board.h"
 #include "../core/types.h"
 #include <atomic>
+#include <string>
+#include <utility>
 #include <vector>
 
-namespace Prometheus {
+
+namespace IroonRook {
 
 namespace Eval {
 
@@ -104,12 +107,28 @@ extern EvalTT EvalCache;
 extern int LazyEvalMargin; // Margin outside window to skip full eval
 extern int MaxNonMateEval; // Max eval for non-mate positions
 
+// Tuning / Tracing Support
+struct EvalTrace {
+  std::vector<std::pair<std::string, double>> terms;
+
+  void add(const std::string &name, double value) {
+    terms.push_back({name, value});
+  }
+};
+
+#define TRACE(trace, name, val)                                                \
+  if constexpr (Trace) {                                                       \
+    if (trace)                                                                 \
+      trace->add(name, (double)(val));                                         \
+  }
+
 // Main Evaluation (with lazy eval and depth dampening support)
 int evaluate(const Board &board, int alpha = -30000, int beta = 30000,
              int depth = 0);
+int evaluate_trace(const Board &board, EvalTrace &trace);
 
 } // namespace Eval
 
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif // EVAL_H

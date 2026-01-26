@@ -4,7 +4,7 @@
 #include "search.h"
 #include <chrono>
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Search {
 
 class TimeManager {
@@ -32,6 +32,6 @@ private:
 extern TimeManager Timer;
 
 } // namespace Search
-} // namespace Prometheus
+} // namespace IroonRook
 
 #endif

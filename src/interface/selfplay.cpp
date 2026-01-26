@@ -11,7 +11,7 @@
 #include <vector>
 
 
-namespace Prometheus {
+namespace IroonRook {
 
 void run_selfplay(int games, int depth, const std::string &outputFile) {
   std::cout << "Starting Self-Play: " << games << " games at depth " << depth
@@ -129,4 +129,4 @@ void run_selfplay(int games, int depth, const std::string &outputFile) {
     outfile.close();
 }
 
-} // namespace Prometheus
+} // namespace IroonRook

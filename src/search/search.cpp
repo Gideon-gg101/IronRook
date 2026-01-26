@@ -14,7 +14,7 @@
 #include <iostream>
 #include <vector>
 
-namespace Prometheus {
+namespace IroonRook {
 
 namespace Search {
 
@@ -591,17 +591,19 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     return Eval::evaluate(board, alpha, beta, depth);
   }
 
+  bool pvNode = (beta - alpha > 1);
   // Check Probing of TT
+  Move ttMove = Move::NONE;
   TTEntry tte;
-  // Use normalized score from TT
   int tt_eval = -INF;
-  if (TT.probe(board.key, tte)) {
+  bool ttHit = TT.probe(board.key, tte);
+
+  if (ttHit) {
     ttMove = tte.move();
     // Normalize score from TT perspective to search perspective
     tt_eval = score_from_tt(tte.score(), ply);
 
-    // ... TT cutoff logic ... (omitted for brevity, assume we update cutoff
-    // check below if needed) Actually, we must use tt_eval for cutoffs
+    // TT Cutoff
     if (tte.depth() >= depth && !pvNode) {
       if (tte.type() == BOUND_EXACT) {
         return tt_eval;
@@ -640,47 +642,21 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     depth += 1; // Extend
   }
 
-  bool pvNode = (beta - alpha > 1);
+  // pvNode declared early
 
   int alphaOrig = alpha;
   int staticEval = 30001; // Sentinel
 
-  // Probe TT
-  Move ttMove = Move::NONE;
-  int ttScore = 0;
-  TTEntry tte;
-  if (TT.probe(board.key, tte)) {
-    ttMove = tte.move();
-    ttScore = tte.score();
-    // Mate score normalization: transform from storage (ply-independent) to
-    // search (ply-relative)
-    if (ttScore > MATE_BOUND)
-      ttScore -= ply;
-    else if (ttScore < -MATE_BOUND)
-      ttScore += ply;
-
-    if (tte.depth() >= depth) {
-      if (excludedMove == Move::NONE) {
-        if (!pvNode || tte.type() == BOUND_EXACT) {
-          if (tte.type() == BOUND_EXACT)
-            return ttScore;
-          if (tte.type() == BOUND_LOWER && ttScore >= beta)
-            return ttScore;
-          if (tte.type() == BOUND_UPPER && ttScore <= alpha)
-            return ttScore;
-        }
-      }
-    }
-  }
+  // TT Probed at start
 
   // Singular Extensions
   int extension = 0;
-  if (excludedMove == Move::NONE && depth >= Eval::SingularMinDepth &&
+  if (excludedMove == Move::NONE && depth >= Eval::SingularMinDepth && ttHit &&
       ttMove != Move::NONE && tte.depth() >= depth - 3 &&
       (tte.type() == BOUND_LOWER || tte.type() == BOUND_EXACT) && !inCheck &&
-      std::abs(ttScore) < MATE_BOUND) {
+      std::abs(tt_eval) < MATE_BOUND) {
 
-    int singularBeta = ttScore - depth * Eval::SingularMarginMultiplier;
+    int singularBeta = tt_eval - depth * Eval::SingularMarginMultiplier;
     int singularDepth = depth / 2 - 1;
 
     int seScore = alpha_beta(board, singularDepth, ply, singularBeta - 1,
@@ -890,7 +866,7 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
       // Safe check for mate scores in TT/Search to normalize distance
       // We do this by passing 'ply' to search, but signature is fixed.
       // Standard: alpha/beta are "mated_in(ply)" relative.
-      // Prometheus uses raw scores relative to root?
+      // IroonRook uses raw scores relative to root?
       // Current: MATE = 30000.
       // We need to handle mate score adjustment in search return and call.
       // Currently: return best_score.
@@ -1290,4 +1266,4 @@ void ThreadPool::clear() {
 }
 } // namespace Search
 
-} // namespace Prometheus
+} // namespace IroonRook

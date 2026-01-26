@@ -2,7 +2,7 @@
 #include "../core/bitboard.h" // For popcount
 #include <cmath>              // std::abs
 
-namespace Prometheus {
+namespace IroonRook {
 namespace Eval {
 
 // Helper: Distance between squares
@@ -174,4 +174,4 @@ EndgameScore evaluate_endgame(const Board &board, int current_score) {
 }
 
 } // namespace Eval
-} // namespace Prometheus
+} // namespace IroonRook
