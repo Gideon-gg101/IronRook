@@ -124,6 +124,11 @@ int ProbcutReduction = 4; // Depth reduction
 int FutilityMargin = 120; // Current: 120cp per depth
 int FutilityMaxDepth = 7; // Current: depth <= 7
 
+// Aspiration Window Parameters
+int AspirationWindow = 16; // Initial window size
+int AspirationGrowth = 12; // Window growth per fail
+int AspirationPanic = 50;  // Fail-low panic threshold
+
 // Helper: Get squares attacked by pawns of a given color
 Bitboard attacked_by_pawns(const Board &board, Color side) {
   Bitboard pawns = board.pieces(PAWN, side);

@@ -58,6 +58,11 @@ extern int ProbcutReduction; // Depth reduction for probcut search
 extern int FutilityMargin;   // Margin per depth for futility pruning
 extern int FutilityMaxDepth; // Maximum depth for futility pruning
 
+// Aspiration Windows
+extern int AspirationWindow; // Initial window size
+extern int AspirationGrowth; // Window growth per fail
+extern int AspirationPanic;  // Panic threshold for wide search
+
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
 constexpr int VALUE_KNIGHT = 320;

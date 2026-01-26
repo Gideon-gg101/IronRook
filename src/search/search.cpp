@@ -1048,7 +1048,7 @@ void SearchWorker::iter_deep() {
 
       int current_score = 0;
       if (depth >= 5 && mpv == 0) {
-        int delta = 16;
+        int delta = Eval::AspirationWindow;
         while (true) {
           int alpha = std::max(-INF, score - delta);
           int beta = std::min(INF, score + delta);
@@ -1061,12 +1061,12 @@ void SearchWorker::iter_deep() {
 
           if (current_score <= alpha) {
             // Fail Low (Horizon Panic?)
-            if (current_score < score - 50)
+            if (current_score < score - Eval::AspirationPanic)
               Timer.extend_time(1.5);
-            delta += delta / 2 + 12;
+            delta += delta / 2 + Eval::AspirationGrowth;
           } else if (current_score >= beta) {
             // Fail High
-            delta += delta / 2 + 12;
+            delta += delta / 2 + Eval::AspirationGrowth;
           } else {
             break;
           }

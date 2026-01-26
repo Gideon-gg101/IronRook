@@ -77,6 +77,11 @@ void ParameterTuner::register_params() {
   // Futility Pruning
   add_param("FutilityMargin", &Eval::FutilityMargin, 80, 180);
   add_param("FutilityMaxDepth", &Eval::FutilityMaxDepth, 5, 9);
+
+  // Aspiration Windows
+  add_param("AspirationWindow", &Eval::AspirationWindow, 10, 50);
+  add_param("AspirationGrowth", &Eval::AspirationGrowth, 5, 30);
+  add_param("AspirationPanic", &Eval::AspirationPanic, 20, 100);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {
