@@ -6,10 +6,10 @@ import random
 import time
 
 def play_game(engine_path, time_limit=0.1):
-    # Using python-chess engine wrapper
+    # Using python-chess engine wrapper (SimpleEngine for sync usage)
     try:
-        transport, engine1 = chess.engine.popen_uci(engine_path)
-        transport2, engine2 = chess.engine.popen_uci(engine_path)
+        engine1 = chess.engine.SimpleEngine.popen_uci(engine_path)
+        engine2 = chess.engine.SimpleEngine.popen_uci(engine_path)
     except Exception as e:
         print(f"Failed to start engine: {e}")
         return None
