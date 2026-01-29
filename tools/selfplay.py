@@ -25,6 +25,15 @@ def play_game(engine_path, time_limit=0.1):
 
     node = game
 
+    # Opening Randomization: Play 8 random moves (4 ply each side) to ensure variety
+    for _ in range(8):
+        if board.is_game_over(): break
+        legal_moves = list(board.legal_moves)
+        if not legal_moves: break
+        random_move = random.choice(legal_moves)
+        board.push(random_move)
+        node = node.add_variation(random_move)
+
     while not board.is_game_over():
         # Select engine based on turn
         engine = engine1 if board.turn == chess.WHITE else engine2
