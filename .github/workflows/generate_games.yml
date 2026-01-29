@@ -41,7 +41,7 @@ jobs:
         python tools/selfplay.py ./IronRook games.pgn ${{ github.event.inputs.num_games }}
 
     - name: Upload Games PGN
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: games-pgn
         path: games.pgn
