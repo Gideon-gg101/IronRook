@@ -2,7 +2,7 @@
 #include "tbprobe.h"
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Syzygy {
 
 bool init(const std::string &path) { return tb_init(path.c_str()); }
@@ -98,4 +98,4 @@ int wdl_to_score(int wdl, int ply) {
 }
 
 } // namespace Syzygy
-} // namespace IroonRook
+} // namespace Prometheus

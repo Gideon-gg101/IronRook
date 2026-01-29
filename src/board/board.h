@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 class Board {
 public:
@@ -96,6 +96,6 @@ inline Square Board::castling_rook(int index) const {
   return castling_rooks[index];
 }
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // BOARD_H

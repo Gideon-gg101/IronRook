@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace IroonRook {
+namespace Prometheus {
 void run_selfplay(int games, int depth, const std::string &outputFile = "");
 }
 

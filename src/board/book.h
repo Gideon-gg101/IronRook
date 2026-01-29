@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 struct BookEntry {
   uint64_t key;
@@ -45,6 +45,6 @@ namespace Polyglot {
 uint64_t compute_key(const Board &board);
 } // namespace Polyglot
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // BOOK_H

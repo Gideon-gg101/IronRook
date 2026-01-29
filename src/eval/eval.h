@@ -7,8 +7,7 @@
 #include <utility>
 #include <vector>
 
-
-namespace IroonRook {
+namespace Prometheus {
 
 namespace Eval {
 
@@ -27,9 +26,23 @@ extern int HarassedByPawnPenalty;
 extern int OpenFileBonus, SemiOpenFileBonus;
 extern int SpaceSquareBonus;
 
+// King Safety Parameters
+extern int KingDefenderWeight; // Reduction per defender
+extern int CoordinationBonus;  // Bonus per co-attacker
+extern int SafeCheckBonus;     // Bonus for safe checks
+
 // Singular Extensions Parameters
 extern int SingularMarginMultiplier; // depth * multiplier for beta margin
 extern int SingularMinDepth;         // minimum depth to apply SE
+extern int DoubleSingularMargin;     // Extra margin for double extension
+
+extern int HistoryLmrDivisor; // Divisor for history reduction
+extern int NmpTtMargin;       // Margin for TT-aware NMP pruning
+
+// Pawn Eval Parameters
+extern int PawnMajorityBonus;
+extern int CandidatePasserBonus;
+extern int PawnTensionBonus; // Maintain tension
 
 // LMR (Late Move Reductions) Parameters
 extern int LMRBaseReduction;  // Base formula multiplier (×0.01)
@@ -47,6 +60,8 @@ extern int IIDMinDepthPV;     // Min depth for IID on PV nodes
 extern int IIDMinDepthNonPV;  // Min depth for IID on non-PV nodes
 extern int IIDReductionPV;    // Depth reduction for PV IID
 extern int IIDReductionNonPV; // Depth reduction for non-PV IID
+extern int IIDRetryMinDepth;  // Retry IID if TT move fails low
+extern int IIDRetryReduction; // Reduction for IID Retry
 
 // Multi-Cut Pruning
 extern int MultiCutThreshold; // Number of beta cutoffs before multi-cut
@@ -65,6 +80,13 @@ extern int FutilityMaxDepth; // Maximum depth for futility pruning
 extern int AspirationWindow; // Initial window size
 extern int AspirationGrowth; // Window growth per fail
 extern int AspirationPanic;  // Panic threshold for wide search
+
+// Verified Null Move Pruning Parameters
+extern int NmpBaseReduction;
+extern int NmpDepthDivisor;
+extern int NmpEvalBetaMargin;
+extern int NmpVerificationDepth;
+extern int NmpVerificationReduction;
 
 // Simple Material Values (centipawns)
 constexpr int VALUE_PAWN = 100;
@@ -127,8 +149,24 @@ int evaluate(const Board &board, int alpha = -30000, int beta = 30000,
              int depth = 0);
 int evaluate_trace(const Board &board, EvalTrace &trace);
 
+// Helper: Get squares attacked by pawns of a given color
+inline Bitboard attacked_by_pawns(const Board &board, Color side) {
+  Bitboard pawns = board.pieces(PAWN, side);
+  if (side == WHITE) {
+    // ((pawns << 9) & 0xFEFEFEFEFEFEFEFEULL) | ((pawns << 7) &
+    // 0x7F7F7F7F7F7F7F7FULL)
+    return ((pawns << 9) & 0xFEFEFEFEFEFEFEFEULL) |
+           ((pawns << 7) & 0x7F7F7F7F7F7F7F7FULL);
+  } else {
+    // ((pawns >> 9) & 0x7F7F7F7F7F7F7F7FULL) | ((pawns >> 7) &
+    // 0xFEFEFEFEFEFEFEFEULL)
+    return ((pawns >> 9) & 0x7F7F7F7F7F7F7F7FULL) |
+           ((pawns >> 7) & 0xFEFEFEFEFEFEFEFEULL);
+  }
+}
+
 } // namespace Eval
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // EVAL_H

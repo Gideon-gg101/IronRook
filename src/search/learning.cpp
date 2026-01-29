@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Search {
 
 ExperienceCache GlobalExperience;
@@ -90,4 +90,4 @@ void ExperienceCache::decay() {
 }
 
 } // namespace Search
-} // namespace IroonRook
+} // namespace Prometheus

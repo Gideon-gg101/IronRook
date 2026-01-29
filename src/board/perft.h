@@ -3,11 +3,11 @@
 
 #include "../board/board.h"
 
-namespace IroonRook {
+namespace Prometheus {
 
 uint64_t perft(Board &board, int depth);
 void perft_divide(Board &board, int depth);
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // PERFT_H

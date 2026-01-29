@@ -4,7 +4,7 @@
 #include "../board/board.h"
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 struct MoveList {
   Move moves[192];
@@ -32,6 +32,6 @@ void generate_legal(Board &board, MoveList &list);
 
 } // namespace MoveGen
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // MOVEGEN_H

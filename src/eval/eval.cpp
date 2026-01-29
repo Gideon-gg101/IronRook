@@ -5,7 +5,7 @@
 #include "pst.h"
 #include <cassert>
 
-namespace IroonRook {
+namespace Prometheus {
 
 namespace Eval {
 
@@ -87,9 +87,23 @@ int OpenFileBonus = 15;
 int SemiOpenFileBonus = 8;
 int SpaceSquareBonus = 5;
 
+// King Safety Tunables
+int KingDefenderWeight = 10;
+int CoordinationBonus = 15;
+int SafeCheckBonus = 20;
+
 // Singular Extensions Parameters
 int SingularMarginMultiplier = 2; // depth * 2 centipawns
 int SingularMinDepth = 8;         // minimum depth for SE
+int DoubleSingularMargin = 20;
+
+int HistoryLmrDivisor = 2048; // Typical history scores are +/- 4096 range
+int NmpTtMargin = 50;         // Centipawns
+
+// Pawn Eval Tunables
+int PawnMajorityBonus = 20;
+int CandidatePasserBonus = 15;
+int PawnTensionBonus = 5;
 
 // Lazy Evaluation & Noise Control Parameters
 int LazyEvalMargin = 150;  // Margin for lazy eval (in centipawns)
@@ -107,10 +121,13 @@ int EvalHysteresis =
     5; // Small deterministic noise (0-10 cp) to smooth eval transitions
 
 // Internal Iterative Deepening (IID) Parameters
-int IIDMinDepthPV = 6;     // Min depth for IID on PV nodes
-int IIDMinDepthNonPV = 8;  // Min depth for IID on non-PV nodes
-int IIDReductionPV = 2;    // Depth reduction for PV IID
-int IIDReductionNonPV = 3; // Depth reduction for non-PV IID
+// IID Parameters
+int IIDMinDepthPV = 8;
+int IIDMinDepthNonPV = 6;
+int IIDReductionPV = 2;
+int IIDReductionNonPV = 3;
+int IIDRetryMinDepth = 10;
+int IIDRetryReduction = 4;
 
 // Multi-Cut Pruning Parameters
 int MultiCutThreshold = 3; // Stockfish uses 3
@@ -130,25 +147,14 @@ int AspirationWindow = 16; // Initial window size
 int AspirationGrowth = 12; // Window growth per fail
 int AspirationPanic = 50;  // Fail-low panic threshold
 
-// Helper: Get squares attacked by pawns of a given color
-Bitboard attacked_by_pawns(const Board &board, Color side) {
-  Bitboard pawns = board.pieces(PAWN, side);
-  if (side == WHITE) {
-    // White attacks NorthWest (+7) and NorthEast (+9)
-    // Mask File H for +7 (avoid A->H wrap? No, A->H is +7? 8->15. Yes. Mask H)
-    // Mask File A for +9 (avoid H->A wrap? 15->24. Yes)
-    // Note: My previous comment analysis was slightly confused but code logic
-    // held. Let's rely on standard: (p << 9) & ~FileA (p << 7) & ~FileH
-    return ((pawns << 9) & 0xFEFEFEFEFEFEFEFEULL) |
-           ((pawns << 7) & 0x7F7F7F7F7F7F7F7FULL);
-  } else {
-    // Black attacks SouthEast (-7) and SouthWest (-9)
-    // (p >> 9) & ~FileH
-    // (p >> 7) & ~FileA
-    return ((pawns >> 9) & 0x7F7F7F7F7F7F7F7FULL) |
-           ((pawns >> 7) & 0xFEFEFEFEFEFEFEFEULL);
-  }
-}
+// Verified Null Move Pruning Parameters
+int NmpBaseReduction = 3;
+int NmpDepthDivisor = 6;
+int NmpEvalBetaMargin = 200;
+int NmpVerificationDepth = 12;
+int NmpVerificationReduction = 4;
+
+// attacked_by_pawns moved to header as inline
 
 // Global Pawn Structure Table is extern in pawn_eval.h
 
@@ -439,16 +445,68 @@ int evaluate_king_safety(const Board &board, Color side,
 
   Color enemy = ~side;
   Bitboard occ = board.all_pieces();
+  Bitboard enemy_pieces_bb = board.pieces(enemy);
+  Bitboard friendly_pieces_bb = board.pieces(side);
+
+  // 1. Defender Calculation
+  // Count friendly pieces that control the ring or are in it
+  int defender_score = 0;
+  Bitboard defenders =
+      friendly_pieces_bb &
+      ~board.pieces(PAWN, side); // Pawns are static shield, pieces are dynamic
+  // (Shield logic is separate below)
+
+  // We can't easily iterate all defenders for control without expensive loop?
+  // Let's stick to simple "Proximity" for now or use the pre-calculated attack
+  // maps if available? We don't have global attack maps computed. Fast
+  // approximation: Pieces close to king? or pieces attacking ring? Let's use
+  // simple distance check for defenders for speed in this pass. Or better:
+  // Iterate friendly pieces and check if they attack ring.
+
+  Bitboard my_knights = board.pieces(KNIGHT, side);
+  while (my_knights) {
+    Square s = Bitboards::pop_lsb(my_knights);
+    if (Magic::get_knight_attacks(s) & inner_ring)
+      defender_score += KingDefenderWeight;
+  }
+  // Sliders... expensive to re-generate all attacks.
+  // Optimization: Only check sliders if they are somewhat close?
+  // For now, skip slider precise defender calc to keep NPS high, rely on Shield
+  // (pawns). Actually, we can count pieces *in* the ring or adjacent.
+  Bitboard near_defenders =
+      (Magic::get_king_attacks(k_sq) | inner_ring) & defenders;
+  defender_score += Bitboards::popcount(near_defenders) * KingDefenderWeight;
 
   int attack_units = 0;
   int attackers_count = 0;
 
-  auto add_threat = [&](Bitboard att, int weight_unit, int weight_check) {
+  // Coordination: Tracking hits per square in the ring
+  unsigned char ring_hits[64] = {0};
+
+  // Safe Check Potential
+  bool safe_check_potential = false;
+
+  auto add_threat = [&](Bitboard att, int weight_unit, int weight_check,
+                        PieceType pt) {
     Bitboard hits = att & inner_ring;
     if (hits) {
       attack_units += weight_unit * Bitboards::popcount(hits) + weight_check;
       attackers_count++;
+
+      while (hits) {
+        Square s = Bitboards::pop_lsb(hits);
+        ring_hits[s]++;
+      }
     }
+
+    // Virtual Safe Check Check
+    // If piece attacks king directly (check), or can move to a square that
+    // checks? Current 'att' is attacks from current position. Actual check
+    // detection is expensive. Approximate: If 'att' hits a square adjacent to
+    // king that is NOT defended by us? Hard to know "defended by us" cheaply.
+    // Let's use a simpler heuristic: if 'att' hits King Ring and is not a Pawn.
+    if (hits && pt > PAWN)
+      safe_check_potential = true;
   };
 
   Bitboard enemy_rooks = board.pieces(ROOK, enemy);
@@ -459,23 +517,44 @@ int evaluate_king_safety(const Board &board, Color side,
   // Scan enemy pieces
   Bitboard knights = enemy_knights;
   while (knights) {
-    add_threat(Magic::get_knight_attacks(Bitboards::pop_lsb(knights)), 3, 2);
+    add_threat(Magic::get_knight_attacks(Bitboards::pop_lsb(knights)), 3, 2,
+               KNIGHT);
   }
 
   Bitboard bishops = enemy_bishops;
   while (bishops) {
     add_threat(Magic::get_bishop_attacks(Bitboards::pop_lsb(bishops), occ), 3,
-               2);
+               2, BISHOP);
   }
 
   Bitboard rooks = enemy_rooks;
   while (rooks) {
-    add_threat(Magic::get_rook_attacks(Bitboards::pop_lsb(rooks), occ), 4, 3);
+    add_threat(Magic::get_rook_attacks(Bitboards::pop_lsb(rooks), occ), 4, 3,
+               ROOK);
   }
 
   Bitboard queens = enemy_queens;
   while (queens) {
-    add_threat(Magic::get_queen_attacks(Bitboards::pop_lsb(queens), occ), 6, 5);
+    add_threat(Magic::get_queen_attacks(Bitboards::pop_lsb(queens), occ), 6, 5,
+               QUEEN);
+  }
+
+  // 2. Coordination Bonus
+  int coordination_score = 0;
+  Bitboard ring = inner_ring;
+  while (ring) {
+    Square s = Bitboards::pop_lsb(ring);
+    if (ring_hits[s] > 1) {
+      coordination_score += (ring_hits[s] - 1) * CoordinationBonus;
+    }
+  }
+  attack_units += coordination_score;
+
+  // 3. Safe Check Bonus
+  if (safe_check_potential && attackers_count > 1) {
+    if (attack_units > 20) { // Only if real pressure exists
+      attack_units += SafeCheckBonus;
+    }
   }
 
   // G+ 2.5: File Alignment Penalties (X-ray threats)
@@ -499,11 +578,7 @@ int evaluate_king_safety(const Board &board, Color side,
   for (int f = std::max(0, k_file - 1); f <= std::min(7, k_file + 1); ++f) {
     Bitboard f_mask = 0x0101010101010101ULL << f;
     if (!(board.pieces(PAWN, side) & f_mask)) {
-      structural_penalty +=
-          OpenFileBonus; // Use global param? OpenFileBonus is for rooks
-                         // usually, but king likes protection. actually
-                         // OpenFileBonus is 15. Previous hardcoded was 15.
-                         // Consisent.
+      structural_penalty += OpenFileBonus;
       if (!(board.pieces(PAWN, enemy) & f_mask)) {
         structural_penalty += 20;
       }
@@ -512,18 +587,26 @@ int evaluate_king_safety(const Board &board, Color side,
 
   // Shield Pawns
   Bitboard shield = inner_ring & board.pieces(PAWN, side);
-  structural_penalty -= Bitboards::popcount(shield) * 12;
+  structural_penalty -= Bitboards::popcount(shield) * 12; // Static shield bonus
 
   if (structural_penalty < 0)
     structural_penalty = 0;
 
-  if (attackers_count < 2 && structural_penalty < 30) {
+  // Apply Defender Reduction
+  // Limit reduction so we don't negative-safety
+  if (defender_score > attack_units / 2)
+    defender_score = attack_units / 2;
+  attack_units -= defender_score;
+
+  if (attackers_count < 2 && structural_penalty < 30 && attack_units < 15) {
     TRACE(trace, "KingSafety", -structural_penalty);
     return structural_penalty;
   }
 
   if (attack_units > 99)
     attack_units = 99;
+  if (attack_units < 0)
+    attack_units = 0;
 
   int safety_score = SafetyTable[attack_units] + structural_penalty;
   TRACE(trace, "KingSafety", -safety_score);
@@ -742,4 +825,4 @@ int evaluate_trace(const Board &board, EvalTrace &trace) {
 
 } // namespace Eval
 
-} // namespace IroonRook
+} // namespace Prometheus

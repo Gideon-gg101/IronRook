@@ -1,10 +1,12 @@
+#include "../core/tt.h"
 #include "search.h"
 #include "time_manager.h"
 #include <iostream>
 
+
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Search {
 
 ThreadPool Threads;
@@ -100,6 +102,13 @@ void ThreadPool::stop() {
   }
 }
 
+void ThreadPool::clear() {
+  TT.clear();
+  for (auto w : workers) {
+    w->clear_history();
+  }
+}
+
 SearchWorker::SearchWorker(int id) : thread_id(id) {
   searching = false;
   should_stop = false;
@@ -151,4 +160,4 @@ void SearchWorker::search() {
 }
 
 } // namespace Search
-} // namespace IroonRook
+} // namespace Prometheus

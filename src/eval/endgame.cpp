@@ -1,8 +1,9 @@
 #include "endgame.h"
 #include "../core/bitboard.h" // For popcount
+#include <algorithm>          // std::min, std::max
 #include <cmath>              // std::abs
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Eval {
 
 // Helper: Distance between squares
@@ -14,9 +15,7 @@ int distance(Square s1, Square s2) {
   return std::max((dr < 0 ? -dr : dr), (dc < 0 ? -dc : dc));
 }
 
-// Distance from center (Manhattan-ish or Chebychev from e4/d4/e5/d5)
-// Center distance: max(dist(r, 3.5), dist(c, 3.5))
-// We can use pre-computed simple array.
+// Distance from center
 int center_dist(Square s) {
   int r = s / 8;
   int c = s % 8;
@@ -48,40 +47,33 @@ EndgameScore evaluate_endgame(const Board &board, int current_score) {
   int w_majors = Bitboards::popcount(wr | wq);
   int b_majors = Bitboards::popcount(br | bq);
 
+  int total_pawns = w_pawns + b_pawns;
+
   // Scale down if material is low (handling drawish endings generally)
   if (w_pawns == 0 && b_pawns == 0) {
     if (w_majors == 0 && b_majors == 0) {
       // Minor piece endings without pawns
-      // KN vs K, KB vs K -> Draw (Scale 0) except if we want to flag it?
-      // current_score might be high due to material, but we need 0.
       if (w_minors <= 1 && b_minors == 0)
         es.scale_factor = 0;
       if (b_minors <= 1 && w_minors == 0)
         es.scale_factor = 0;
 
-      // KNN vs K is draw (theoretically)
+      // KNN vs K
       if (w_minors == 2 && b_minors == 0 && w_minors == Bitboards::popcount(wn))
-        es.scale_factor = 0; // 2 Knights
+        es.scale_factor = 0;
       if (b_minors == 2 && w_minors == 0 && b_minors == Bitboards::popcount(bn))
         es.scale_factor = 0;
 
       // KBN vs K (Winning)
-      // Need to push King to corner of Bishop color.
       if (Bitboards::popcount(wn) == 1 && Bitboards::popcount(wb) == 1 &&
           b_minors == 0) {
         // White KBN vs Black K
         Square b_sq = Bitboards::lsb(wb);
         Square bk_sq = Bitboards::lsb(board.pieces(KING, BLACK));
 
-        // Color of bishop square
         bool bishop_is_light = ((b_sq / 8) + (b_sq % 8)) % 2 != 0;
 
-        // Target Corners:
-        // Light B: H1 (7), A8 (56). Dark B: A1 (0), H8 (63).
-        // Distance to wrong corner?
-
-        // Simplified: Push enemy king to ANY corner? No, must be specific.
-        // Bonus for distance to correct corner.
+        // Target Corners logic
         int dist_a1 = distance(bk_sq, Square::SQ_A1);
         int dist_h8 = distance(bk_sq, Square::SQ_H8);
         int dist_a8 = distance(bk_sq, Square::SQ_A8);
@@ -94,16 +86,13 @@ EndgameScore evaluate_endgame(const Board &board, int current_score) {
           min_dist = std::min(dist_a8, dist_h1);
         }
 
-        // Invert distance: Closer is better. Max dist is 7.
-        es.score_bonus += (7 - min_dist) * 50; // Huge bonus to drive mate
-
-        // Also drive kings together
+        es.score_bonus += (7 - min_dist) * 50;
         Square wk_sq = Bitboards::lsb(board.pieces(KING, WHITE));
         es.score_bonus += (14 - distance(wk_sq, bk_sq)) * 10;
-
-        es.scale_factor = 64; // Keep full evaluation
+        es.scale_factor = 64;
         return es;
       }
+
       // Mirror for Black KBN vs K
       if (Bitboards::popcount(bn) == 1 && Bitboards::popcount(bb) == 1 &&
           w_minors == 0) {
@@ -129,9 +118,130 @@ EndgameScore evaluate_endgame(const Board &board, int current_score) {
     }
   }
 
-  // Opposite Colored Bishops (OCB) preservation
-  // If 1 Bishop each, no other pieces (except pawns)
-  // Check if opposite color
+  // --- KBPK: Wrong Colored Bishop ---
+  if (total_pawns == 1 && b_minors == 0 && b_majors == 0) {
+    if (w_minors == 1 && Bitboards::popcount(wb) == 1) {
+      // White KBP vs Black K
+      Square p_sq = Bitboards::lsb(wp);
+      int file = p_sq % 8;
+      if (file == 0 || file == 7) { // Rook Pawn
+        Square b_sq = Bitboards::lsb(wb);
+        bool bishop_light = ((b_sq / 8) + (b_sq % 8)) % 2 != 0;
+        bool prom_sq_light =
+            (file == 0) ? true
+                        : false; // A8(Light), H8(Dark) Check: A8 is Light.
+
+        if (bishop_light != prom_sq_light) {
+          Square bk_sq = Bitboards::lsb(board.pieces(KING, BLACK));
+          Square prom_sq = (file == 0) ? Square::SQ_A8 : Square::SQ_H8;
+          if (distance(bk_sq, prom_sq) <= 2) {
+            es.scale_factor = 0; // DRAW
+            return es;
+          }
+        }
+      }
+    }
+    // Mirror for Black
+    if (b_minors == 1 && Bitboards::popcount(bb) == 1) {
+      Square p_sq = Bitboards::lsb(bp);
+      int file = p_sq % 8;
+      if (file == 0 || file == 7) {
+        Square b_sq = Bitboards::lsb(bb);
+        bool bishop_light = ((b_sq / 8) + (b_sq % 8)) % 2 != 0;
+        bool prom_sq_light = (file == 0) ? false : true; // A1(Dark), H1(Light)
+
+        if (bishop_light != prom_sq_light) {
+          Square wk_sq = Bitboards::lsb(board.pieces(KING, WHITE));
+          Square prom_sq = (file == 0) ? Square::SQ_A1 : Square::SQ_H1;
+          if (distance(wk_sq, prom_sq) <= 2) {
+            es.scale_factor = 0;
+            return es;
+          }
+        }
+      }
+    }
+  }
+
+  // --- RPKR: Rook+Pawn vs Rook (Fortress Detection) ---
+  if (total_pawns == 1 && w_majors == 1 && b_majors == 1 && w_minors == 0 &&
+      b_minors == 0) {
+    if (Bitboards::popcount(wr) == 1 && Bitboards::popcount(br) == 1) {
+      // White Pawn
+      if (w_pawns == 1) {
+        Square p_sq = Bitboards::lsb(wp);
+        // Square bk_sq = Bitboards::lsb(board.pieces(KING, BLACK)); // Unused
+        Square bk_sq = Bitboards::lsb(board.pieces(KING, BLACK));
+        int file = p_sq % 8;
+        int rank = p_sq / 8;
+        int k_file = bk_sq % 8;
+        int k_rank = bk_sq / 8;
+
+        bool draw = false;
+        if (k_file == file && k_rank > rank) {
+          draw = true;
+        }
+
+        if (draw) {
+          es.scale_factor = 0; // Theoretical Draw / Fortress
+          return es;
+        }
+      }
+      // Black Pawn
+      else {
+        Square p_sq = Bitboards::lsb(bp);
+        Square wk_sq = Bitboards::lsb(board.pieces(KING, WHITE));
+        int file = p_sq % 8;
+        int rank = p_sq / 8;
+        int k_file = wk_sq % 8;
+        int k_rank = wk_sq / 8;
+
+        bool draw = false;
+        // King on same file, in front (rank < p_rank)
+        if (k_file == file && k_rank < rank) {
+          draw = true;
+        }
+
+        if (draw) {
+          es.scale_factor = 0;
+          return es;
+        }
+      }
+    }
+  }
+
+  // --- KPK: Rook Pawn Draw ---
+  if (total_pawns == 1 && w_minors == 0 && b_minors == 0 && w_majors == 0 &&
+      b_majors == 0) {
+    if (w_pawns == 1) {
+      Square p_sq = Bitboards::lsb(wp);
+      int file = p_sq % 8;
+      if (file == 0 || file == 7) {
+        Square bk_sq = Bitboards::lsb(board.pieces(KING, BLACK));
+        int p_rank = p_sq / 8;
+        int k_rank = bk_sq / 8;
+        int k_file = bk_sq % 8;
+        if (k_file == file && k_rank > p_rank) {
+          es.scale_factor = 0;
+          return es;
+        }
+      }
+    } else { // Black Pawn
+      Square p_sq = Bitboards::lsb(bp);
+      int file = p_sq % 8;
+      if (file == 0 || file == 7) {
+        Square wk_sq = Bitboards::lsb(board.pieces(KING, WHITE));
+        int p_rank = p_sq / 8;
+        int k_rank = wk_sq / 8;
+        int k_file = wk_sq % 8;
+        if (k_file == file && k_rank < p_rank) {
+          es.scale_factor = 0;
+          return es;
+        }
+      }
+    }
+  }
+
+  // Opposite Colored Bishops (OCB)
   if (w_minors == 1 && b_minors == 1 && w_majors == 0 && b_majors == 0) {
     if (Bitboards::popcount(wb) == 1 && Bitboards::popcount(bb) == 1) {
       Square w_sq = Bitboards::lsb(wb);
@@ -139,39 +249,29 @@ EndgameScore evaluate_endgame(const Board &board, int current_score) {
       bool w_light = ((w_sq / 8) + (w_sq % 8)) % 2 != 0;
       bool b_light = ((b_sq / 8) + (b_sq % 8)) % 2 != 0;
       if (w_light != b_light) {
-        // OCB
-        // Scale down based on number of pawns.
-        // 1 pawn vs 0 -> Drawish.
-        // 2 vs 1 -> Drawish.
-        // Symmetric pawns -> Very Drawish.
-        int total_pawns = w_pawns + b_pawns;
         if (total_pawns == 0)
-          es.scale_factor = 0; // Pure OCB is draw
+          es.scale_factor = 0;
         else if (total_pawns <= 2)
-          es.scale_factor = 16; // Very drawish
+          es.scale_factor = 16;
         else
-          es.scale_factor = 32; // Still drawish
+          es.scale_factor = 32;
       }
     }
   }
 
-  // General Material Scaling: Dampen scores if few pawns exist
-  int total_pawns = w_pawns + b_pawns;
+  // General Material Scaling
   if (total_pawns == 0) {
     if (w_majors == 0 && b_majors == 0 && std::abs(w_minors - b_minors) <= 1) {
-      es.scale_factor =
-          es.scale_factor * 16 / 64; // Heavily dampen pawnless minor endings
+      es.scale_factor = es.scale_factor * 16 / 64;
     } else {
-      es.scale_factor =
-          es.scale_factor * 32 / 64; // Dampen other pawnless endings
+      es.scale_factor = es.scale_factor * 32 / 64;
     }
   } else if (total_pawns <= 2) {
-    es.scale_factor =
-        es.scale_factor * 48 / 64; // Slight dampening for low pawn counts
+    es.scale_factor = es.scale_factor * 48 / 64;
   }
 
   return es;
 }
 
 } // namespace Eval
-} // namespace IroonRook
+} // namespace Prometheus

@@ -1,7 +1,7 @@
 #include "bitboard.h"
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Bitboards {
 
 void print(Bitboard bb) {
@@ -22,4 +22,4 @@ void print(Bitboard bb) {
 }
 
 } // namespace Bitboards
-} // namespace IroonRook
+} // namespace Prometheus

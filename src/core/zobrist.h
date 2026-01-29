@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-namespace IroonRook {
+namespace Prometheus {
 
 namespace Zobrist {
 
@@ -16,6 +16,6 @@ void init();
 
 } // namespace Zobrist
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // ZOBRIST_H

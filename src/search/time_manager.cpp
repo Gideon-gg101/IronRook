@@ -1,7 +1,7 @@
 #include "time_manager.h"
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Search {
 
 TimeManager Timer;
@@ -75,6 +75,27 @@ void TimeManager::finish_early() {
   soft_limit = (int)(soft_limit * 0.75); // Reduce soft limit
 }
 
+void TimeManager::update_best_move(Move m, int depth) {
+  if (m != last_best_move) {
+    last_best_move = m;
+    stability_counter = 0;
+
+    // If best move changes at high depth (> 60% of time used or depth > 8?)
+    // Let's use a simple heuristic: if depth > 7 and we have used > 50% of
+    // soft_limit
+    if (depth > 7) {
+      long long t = elapsed();
+      if (t > soft_limit * 0.5) {
+        extend_time(panic_factor);
+      }
+    }
+  } else {
+    stability_counter++;
+  }
+}
+
+void TimeManager::fail_low() { extend_time(1.0 + fail_low_extension); }
+
 bool TimeManager::should_stop(uint64_t accumulated_nodes) {
   if (infinite)
     return false;
@@ -100,5 +121,11 @@ bool TimeManager::should_stop(uint64_t accumulated_nodes) {
   return false;
 }
 
+long long TimeManager::elapsed() const {
+  auto now = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time)
+      .count();
+}
+
 } // namespace Search
-} // namespace IroonRook
+} // namespace Prometheus

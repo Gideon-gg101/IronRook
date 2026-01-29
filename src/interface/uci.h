@@ -5,7 +5,7 @@
 #include "../search/search.h"
 #include <string>
 
-namespace IroonRook {
+namespace Prometheus {
 
 namespace UCI {
 
@@ -17,6 +17,6 @@ void go(const std::string &command, Board &board);
 
 } // namespace UCI
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // UCI_H

@@ -12,7 +12,7 @@
 #include <sstream>
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 namespace UCI {
 
@@ -23,6 +23,50 @@ void loop() {
 
   // Register tunable parameters
   Tuning::GlobalTuner.register_params();
+  Tuning::GlobalTuner.add_param("NmpBaseReduction", &Eval::NmpBaseReduction, 1,
+                                10, 1);
+  Tuning::GlobalTuner.add_param("NmpDepthDivisor", &Eval::NmpDepthDivisor, 1,
+                                20, 1);
+  Tuning::GlobalTuner.add_param("NmpEvalBetaMargin", &Eval::NmpEvalBetaMargin,
+                                0, 500, 10);
+  Tuning::GlobalTuner.add_param("NmpVerificationDepth",
+                                &Eval::NmpVerificationDepth, 6, 20, 1);
+  Tuning::GlobalTuner.add_param("NmpVerificationReduction",
+                                &Eval::NmpVerificationReduction, 1, 10, 1);
+
+  // --- King Safety ---
+  Tuning::GlobalTuner.add_param("KingDefenderWeight", &Eval::KingDefenderWeight,
+                                0, 50, 5);
+  Tuning::GlobalTuner.add_param("CoordinationBonus", &Eval::CoordinationBonus,
+                                0, 50, 5);
+  Tuning::GlobalTuner.add_param("SafeCheckBonus", &Eval::SafeCheckBonus, 0, 100,
+                                10);
+
+  // --- Pawn Eval ---
+  Tuning::GlobalTuner.add_param("PawnMajorityBonus", &Eval::PawnMajorityBonus,
+                                0, 50, 5);
+  Tuning::GlobalTuner.add_param("CandidatePasserBonus",
+                                &Eval::CandidatePasserBonus, 0, 100, 10);
+  Tuning::GlobalTuner.add_param("PawnTensionBonus", &Eval::PawnTensionBonus, 0,
+                                50, 5);
+
+  // --- IID IIDRetry ---
+  Tuning::GlobalTuner.add_param("IIDRetryMinDepth", &Eval::IIDRetryMinDepth, 4,
+                                18, 1);
+  Tuning::GlobalTuner.add_param("IIDRetryReduction", &Eval::IIDRetryReduction,
+                                1, 8, 1);
+
+  // --- Other Eval ---
+  Tuning::GlobalTuner.add_param("OpenFileBonus", &Eval::OpenFileBonus, 0, 50,
+                                5);
+  Tuning::GlobalTuner.add_param("SemiOpenFileBonus", &Eval::SemiOpenFileBonus,
+                                0, 50, 5);
+  Tuning::GlobalTuner.add_param("SpaceSquareBonus", &Eval::SpaceSquareBonus, 0,
+                                20, 2);
+  Tuning::GlobalTuner.add_param("BishopPairMG", &Eval::BishopPairMG, 0, 100,
+                                10);
+  Tuning::GlobalTuner.add_param("BishopPairEG", &Eval::BishopPairEG, 0, 100,
+                                10);
 
   // Initialize LMR reduction table
   Search::init_lmr_table();
@@ -356,4 +400,4 @@ void position(const std::string &command, Board &board) {
 
 } // namespace UCI
 
-} // namespace IroonRook
+} // namespace Prometheus

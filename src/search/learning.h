@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Search {
 
 struct ExperienceEntry {
@@ -38,6 +38,6 @@ private:
 extern ExperienceCache GlobalExperience;
 
 } // namespace Search
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif

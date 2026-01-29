@@ -3,7 +3,7 @@ import time
 import sys
 import os
 
-ENGINE_PATH = r"build\Prometheus.exe"
+ENGINE_PATH = r"build\IronRook.exe"
 
 def log(msg):
     print(f"[TEST] {msg}")

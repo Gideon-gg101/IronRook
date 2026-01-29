@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Tuning {
 
 ParameterTuner GlobalTuner;
@@ -164,4 +164,4 @@ void ParameterTuner::run_spsa(int iterations) {
 }
 
 } // namespace Tuning
-} // namespace IroonRook
+} // namespace Prometheus

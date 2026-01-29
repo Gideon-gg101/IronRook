@@ -3,7 +3,7 @@
 #include <chrono>
 #include <iostream>
 
-namespace IroonRook {
+namespace Prometheus {
 
 uint64_t perft(Board &board, int depth) {
   if (depth == 0)
@@ -50,4 +50,4 @@ void perft_divide(Board &board, int depth) {
   std::cout << "NPS: " << (uint64_t)(total_nodes / elapsed.count()) << "\n";
 }
 
-} // namespace IroonRook
+} // namespace Prometheus

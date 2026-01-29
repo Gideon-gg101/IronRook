@@ -1,13 +1,15 @@
 #include "tuner.h"
 #include "../eval/eval.h"
 #include "../eval/pst.h"
+#include "tuning.h"
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <random>
 #include <sstream>
 
-namespace IroonRook {
+
+namespace Prometheus {
 namespace Tuning {
 
 std::vector<DataPoint> Tuner::dataset;
@@ -71,56 +73,58 @@ struct Parameter {
 };
 
 void Tuner::run(int iterations) {
-  std::vector<Parameter> params;
+  // Use the Unified Global Registry
+  // This allows us to tune EVERYTHING that is registered in UCI!
 
-  // Register params
-  for (int pt = 1; pt <= 5; ++pt) {
-    params.push_back({&PST::Material[pt][0], "MatMG_" + std::to_string(pt)});
-    params.push_back({&PST::Material[pt][1], "MatEG_" + std::to_string(pt)});
+  // We need to convert from GlobalTuner's TunableParam to local Parameter
+  // struct or just use GlobalTuner directly.
+
+  auto &global_params = Tuning::GlobalTuner.get_params_list();
+
+  std::cout << "Optimizing " << global_params.size() << " parameters..."
+            << std::endl;
+
+  if (dataset.empty()) {
+    std::cout << "Error: No dataset loaded. Use 'tune <file>'." << std::endl;
+    return;
   }
-
-  for (int i = 0; i < 64; ++i) {
-    params.push_back({&PST::mg_pawn_table[i], "PST_P_MG_" + std::to_string(i)});
-    params.push_back({&PST::eg_pawn_table[i], "PST_P_EG_" + std::to_string(i)});
-    params.push_back(
-        {&PST::mg_knight_table[i], "PST_N_MG_" + std::to_string(i)});
-    params.push_back(
-        {&PST::eg_knight_table[i], "PST_N_EG_" + std::to_string(i)});
-  }
-
-  std::cout << "Optimizing " << params.size() << " parameters..." << std::endl;
 
   double best_error = compute_error();
   std::cout << "Initial Error: " << best_error << std::endl;
 
   std::mt19937 rng(12345);
-  std::uniform_int_distribution<int> idx_dist(0, params.size() - 1);
+  std::uniform_int_distribution<size_t> idx_dist(0, global_params.size() - 1);
   std::uniform_int_distribution<int> delta_dist(0, 1);
 
   for (int it = 1; it <= iterations; ++it) {
-    int idx = idx_dist(rng);
+    size_t idx = idx_dist(rng);
     int delta = (delta_dist(rng) == 0) ? -1 : 1;
 
-    *params[idx].ptr += delta;
+    // Mutate
+    *global_params[idx].value_ptr += delta;
+
+    // Clamp? (Optional, skipping for simple Tuner)
+
     double new_error = compute_error();
 
     if (new_error < best_error) {
       best_error = new_error;
       if (it % 100 == 0)
-        std::cout << "Iter " << it << " Error: " << best_error << std::endl;
+        std::cout << "Iter " << it << " Error: " << best_error << " (Improved "
+                  << global_params[idx].name << ")" << std::endl;
     } else {
-      *params[idx].ptr -= delta;
+      // Revert
+      *global_params[idx].value_ptr -= delta;
     }
   }
   std::cout << "Final Error: " << best_error << std::endl;
 
-  // Output tuned values (Simplified dump)
-  std::cout << "--- Tuned Material ---" << std::endl;
-  for (int pt = 1; pt <= 5; ++pt) {
-    std::cout << pt << ": " << PST::Material[pt][0] << ", "
-              << PST::Material[pt][1] << std::endl;
+  // Output tuned values
+  std::cout << "--- Tuned Parameters ---" << std::endl;
+  for (const auto &p : global_params) {
+    std::cout << p.name << " = " << *p.value_ptr << std::endl;
   }
 }
 
 } // namespace Tuning
-} // namespace IroonRook
+} // namespace Prometheus

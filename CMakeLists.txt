@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(IroonRook CXX)
+project(IronRook CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,13 +50,13 @@ set(SOURCES
 )
 
 # Create executable
-add_executable(IroonRook ${SOURCES})
+add_executable(IronRook ${SOURCES})
 
 # Link threading library
 find_package(Threads REQUIRED)
-target_link_libraries(IroonRook PRIVATE Threads::Threads)
+target_link_libraries(IronRook PRIVATE Threads::Threads)
 
 # Platform-specific libraries
 if(WIN32)
-  target_link_libraries(IroonRook PRIVATE ws2_32)
+  target_link_libraries(IronRook PRIVATE ws2_32)
 endif()

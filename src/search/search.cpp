@@ -14,7 +14,7 @@
 #include <iostream>
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 namespace Search {
 
@@ -452,20 +452,43 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
       if (skip)
         continue;
 
+      // Root Move Count Pruning
+      if (depth >= 6 && moves_searched > 16 && !inCheck) {
+        if (history[board.side_to_move()][m.from()][m.to()] < -200) {
+          continue;
+        }
+      }
+
       Board copy = board;
       if (copy.make_move(m)) {
         moves_searched++;
         int score;
 
+        // Root LMR
+        int reduction = 0;
+        if (depth >= 3 && moves_searched > 4) {
+          reduction =
+              LMRTable[std::min(depth, 63)][std::min(moves_searched, 63)];
+          if (reduction > 1)
+            reduction = 1; // Mild cap at root
+        }
+
         if (moves_searched == 1) {
           score = -alpha_beta(copy, depth - 1, 1, -beta, -alpha, nodes,
-                              Move::NONE, m);
+                              Move::NONE, m, true);
         } else {
-          score = -alpha_beta(copy, depth - 1, 1, -alpha - 1, -alpha, nodes,
-                              Move::NONE, m);
+          // PVS with LMR at root
+          score = -alpha_beta(copy, depth - 1 - reduction, 1, -alpha - 1,
+                              -alpha, nodes, Move::NONE, m, true);
+
+          if (score > alpha && reduction > 0) {
+            score = -alpha_beta(copy, depth - 1, 1, -alpha - 1, -alpha, nodes,
+                                Move::NONE, m, true);
+          }
+
           if (score > alpha && score < beta) {
             score = -alpha_beta(copy, depth - 1, 1, -beta, -alpha, nodes,
-                                Move::NONE, m);
+                                Move::NONE, m, true);
           }
         }
 
@@ -512,20 +535,43 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
       if (skip)
         continue;
 
+      // Root Move Count Pruning
+      if (depth >= 6 && moves_searched > 16 && !inCheck) {
+        if (history[board.side_to_move()][m.from()][m.to()] < -200) {
+          continue;
+        }
+      }
+
       Board copy = board;
       if (copy.make_move(m)) {
         moves_searched++;
         int score;
 
+        // Root LMR
+        int reduction = 0;
+        if (depth >= 3 && moves_searched > 4) {
+          reduction =
+              LMRTable[std::min(depth, 63)][std::min(moves_searched, 63)];
+          if (reduction > 1)
+            reduction = 1; // Mild cap at root
+        }
+
         if (moves_searched == 1) {
           score = -alpha_beta(copy, depth - 1, 1, -beta, -alpha, nodes,
-                              Move::NONE, m);
+                              Move::NONE, m, true);
         } else {
-          score = -alpha_beta(copy, depth - 1, 1, -alpha - 1, -alpha, nodes,
-                              Move::NONE, m);
+          // PVS with LMR
+          score = -alpha_beta(copy, depth - 1 - reduction, 1, -alpha - 1,
+                              -alpha, nodes, Move::NONE, m, true);
+
+          if (score > alpha && reduction > 0) {
+            score = -alpha_beta(copy, depth - 1, 1, -alpha - 1, -alpha, nodes,
+                                Move::NONE, m, true);
+          }
+
           if (score > alpha && score < beta) {
             score = -alpha_beta(copy, depth - 1, 1, -beta, -alpha, nodes,
-                                Move::NONE, m);
+                                Move::NONE, m, true);
           }
         }
 
@@ -578,7 +624,7 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
 
 int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
                              int beta, uint64_t &nodes, Move excludedMove,
-                             Move prevMove) {
+                             Move prevMove, bool allowNull, bool updateStats) {
   if (should_stop)
     return 0;
 
@@ -618,12 +664,6 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   }
 
   // Draw Detection: Repetition / 50-move
-  // Optimization: Only check for repetition if we are not at root
-  // and we have enough history.
-  // G+ Repetition Horizon: Don't check forever back?
-  // Board::is_repetition already handles history scan.
-  // We just ensure we don't return draw at root (ply 0 checked locally
-  // usually).
   if (ply > 0 && (board.half_move_clock() >= 100 || board.is_repetition())) {
     return -limits.contempt; // Contempt factor for draw
   }
@@ -642,33 +682,47 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     depth += 1; // Extend
   }
 
-  // pvNode declared early
-
   int alphaOrig = alpha;
   int staticEval = 30001; // Sentinel
 
-  // TT Probed at start
-
   // Singular Extensions
-  int extension = 0;
-  if (excludedMove == Move::NONE && depth >= Eval::SingularMinDepth && ttHit &&
-      ttMove != Move::NONE && tte.depth() >= depth - 3 &&
+  // Singular Extensions
+  int singularExt = 0;
+  if (depth >= Eval::SingularMinDepth && ttHit && ttMove != Move::NONE &&
+      ttMove != excludedMove && // Recursive SE protection
+      tte.depth() >= depth - 3 &&
       (tte.type() == BOUND_LOWER || tte.type() == BOUND_EXACT) && !inCheck &&
-      std::abs(tt_eval) < MATE_BOUND) {
+      std::abs(tt_eval) < MATE_BOUND && std::abs(alpha) < MATE_SCORE - 100 &&
+      std::abs(beta) < MATE_SCORE - 100) {
 
     int singularBeta = tt_eval - depth * Eval::SingularMarginMultiplier;
     int singularDepth = depth / 2 - 1;
 
-    int seScore = alpha_beta(board, singularDepth, ply, singularBeta - 1,
-                             singularBeta, nodes, ttMove, prevMove);
+    int seScore =
+        alpha_beta(board, singularDepth, ply, singularBeta - 1, singularBeta,
+                   nodes, ttMove, prevMove, allowNull, updateStats);
 
     if (seScore < singularBeta) {
-      extension = 1; // TT move is singular!
+      singularExt = 1; // TT move is singular!
+
+      // Double Singular Extension
+      if (seScore < singularBeta - Eval::DoubleSingularMargin &&
+          depth >= Eval::SingularMinDepth + 2) {
+        singularExt = 2;
+      }
     }
   }
 
+  // Apply Extension (Safety Clamp)
+  // Move depth processing to HERE if feasible, or pass singularExt logic down?
+  // Usually this extends the search of the TT move specifically, OR extends the
+  // *current* node. Standard logic: Extend the search of this node if the TT
+  // move is the only good one. Wait, Prometheus implementation structure is
+  // slightly different. depth passed to alpha_beta calls. Correct application:
+  // Update 'depth' before move loop? Yes.
+  depth += singularExt;
+
   // Internal Iterative Deepening (IID)
-  // Perform reduced-depth search to fill TT when no hash move available
   int minDepth = pvNode ? Eval::IIDMinDepthPV : Eval::IIDMinDepthNonPV;
 
   if (depth >= minDepth && ttMove == Move::NONE && !inCheck && !should_stop) {
@@ -683,7 +737,9 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
       iidDepth = 1; // Safety: minimum depth
 
     // Perform reduced-depth search to populate TT
-    alpha_beta(board, iidDepth, ply, alpha, beta, nodes);
+    // Preserve allowNull
+    alpha_beta(board, iidDepth, ply, alpha, beta, nodes, Move::NONE, Move::NONE,
+               allowNull, updateStats);
 
     // Retrieve best move from TT
     if (TT.probe(board.key, tte)) {
@@ -708,7 +764,6 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   bool improving = (ply >= 2 && staticEval > static_evals[ply - 2]);
 
   // ProbCut: Early cutoff with shallow verification
-  // No ProbCut in PV nodes or near mate scores
   if (!pvNode && depth >= Eval::ProbcutMinDepth && std::abs(beta) < MATE &&
       !inCheck) {
     int probBeta = beta + Eval::ProbcutMargin;
@@ -716,8 +771,9 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     if (reducedDepth < 1)
       reducedDepth = 1;
 
+    // Preserve allowNull
     int score = alpha_beta(board, reducedDepth, ply + 1, probBeta - 1, probBeta,
-                           nodes, Move::NONE, prevMove);
+                           nodes, Move::NONE, prevMove, allowNull, updateStats);
 
     if (score >= probBeta) {
       TT.save(board.key, beta, BOUND_LOWER, depth, Move::NONE, 0, ply);
@@ -726,25 +782,45 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   }
 
   // Null Move Pruning
-  // Absolutely NO NMP in PV nodes
-  if (!pvNode && depth >= 3 &&
+  if (allowNull && !pvNode && depth >= 3 &&
       !board.is_square_attacked(
           Bitboards::lsb(board.pieces(KING, board.side_to_move())),
           ~board.side_to_move())) {
 
-    // Adaptive R: Increase reduction if score is high above beta
-    int R = 3 + depth / 6 + std::min(3, (staticEval - beta) / 200);
+    int R = Eval::NmpBaseReduction + depth / Eval::NmpDepthDivisor +
+            std::min(3, (staticEval - beta) / Eval::NmpEvalBetaMargin);
 
-    // Suppression in endgames to avoid zugzwang risks
-    bool zugzwang_risk = (board.phase_value < 4); // Very few pieces left
+    // Disable NMP if we have only King + Pawns (or just King)
+    Bitboard non_pawns = board.pieces(board.side_to_move()) &
+                         ~board.pieces(PAWN, board.side_to_move()) &
+                         ~board.pieces(KING, board.side_to_move());
+    bool only_pawns = (non_pawns == 0);
 
-    if (staticEval >= beta && (!zugzwang_risk || staticEval >= beta + 200)) {
+    if (staticEval >= beta && !only_pawns) {
       Board copy = board;
       copy.make_null_move();
-      int score = -alpha_beta(copy, depth - 1 - R, ply + 1, -beta, -beta + 1,
-                              nodes, Move::NONE, Move::NONE);
-      if (score >= beta)
-        return (score >= MATE_BOUND) ? beta : score;
+      // Pass allowNull=false
+      int score =
+          -alpha_beta(copy, depth - 1 - R, ply + 1, -beta, -beta + 1, nodes,
+                      Move::NONE, Move::NONE, false, updateStats);
+      if (score >= beta) {
+        // Verified Null Move Pruning (VNM)
+        if (depth >= Eval::NmpVerificationDepth &&
+            std::abs(beta) < MATE_BOUND) {
+          int vDepth = depth - Eval::NmpVerificationReduction;
+          if (vDepth < 1)
+            vDepth = 1;
+
+          int vScore =
+              -alpha_beta(copy, vDepth, ply + 1, -beta, -beta + 1, nodes,
+                          Move::NONE, Move::NONE, false, updateStats);
+          if (vScore >= beta) {
+            return (vScore >= MATE_BOUND) ? beta : vScore;
+          }
+        } else {
+          return (score >= MATE_BOUND) ? beta : score;
+        }
+      }
     }
   }
 
@@ -758,137 +834,84 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   int best_score = -INF;
   Move best_move = Move::NONE;
 
-  int moves_searched = 0;
-  int cutoff_count = 0; // Multi-cut: track beta cutoffs
+  int local_moves_searched = 0;
 
   for (int i = 0; i < list.count; ++i) {
     Move m = pick_next_move(list, i);
     if (m == Move::NONE)
       break;
 
-    bool is_quiet = (board.piece_on(m.to()) == NO_PIECE) &&
-                    (m.flags() != MoveFlags::EP_CAPTURE);
-
-    // SEE Pruning (Bad Captures)
-    // If capture is static loss (see < -margin), prune it
-    if (!is_quiet && depth > 0 && !inCheck) {
-      // G+ 4: SEE Scaling
-      int see_margin = 50 * depth;
-      if (!board.see(m, -see_margin)) {
-        continue;
-      }
-    }
-
-    // Late Move Pruning (LMP): skip late quiet moves
-    // Dynamic count based on depth and position evaluation
-    if (!pvNode && !inCheck && is_quiet && depth <= 8) {
-      int eval_margin = staticEval - alpha;
-      int lmp_count = 3 + depth * depth;
-      if (eval_margin > 0)
-        lmp_count += eval_margin / 100;
-
-      if (moves_searched >= lmp_count) {
-        continue; // Skip this late quiet move
-      }
-    }
-
-    // History Pruning
-    // Prune moves with very bad history
-    // G+ 1.4: History Pruning
-    if (!pvNode && !inCheck && is_quiet && depth <= 3) {
-      int hist = history[board.side_to_move()][m.from()][m.to()];
-      if (hist < -2000) // Threshold
-        continue;
-    }
-
-    // Futility Pruning: skip moves unlikely to raise alpha
-    // Only in non-PV, quiet, non-check positions
-    if (!pvNode && depth <= Eval::FutilityMaxDepth && is_quiet && !inCheck &&
-        alpha < 20000 && beta < 20000 && moves_searched > 0) {
-      int fMargin = Eval::FutilityMargin * depth;
-      if (staticEval + fMargin <= alpha) {
-        continue; // Position too bad, skip this move
-      }
-    }
+    if (m == excludedMove)
+      continue;
 
     Board copy = board;
     if (copy.make_move(m)) {
-      moves_searched++;
-
-      int moveExtension = 0;
-
-      // SE extension applies to TT move
-      if (m == ttMove) {
-        moveExtension += extension;
-      }
-
-      // Pawn-to-7th extension
-      if (is_quiet && depth < 16) {
-        Piece p = board.piece_on(m.from());
-        int to_rank = m.to() / 8;
-        if (p == W_PAWN && to_rank == 6)
-          moveExtension = 1;
-        if (p == B_PAWN && to_rank == 1)
-          moveExtension = 1;
-      }
-
+      local_moves_searched++;
       int score;
-      int reduction = 0;
-      if (depth >= 3 && moves_searched > 1 && is_quiet) {
-        // Use pre-computed LMR table instead of runtime log calculation
-        int d_idx = std::min(depth, 63);
-        int m_idx = std::min(moves_searched, 63);
-        reduction = LMRTable[d_idx][m_idx];
 
-        reduction -= moveExtension; // Extend instead of reduce
+      // Reset allowNull to true for normal moves (unless there's another reason
+      // to disable it?) NMP recursion is essentially checking if passing is
+      // good. If we move, the next search presumably allows null move (since we
+      // moved). So allowNull = true.
 
-        // History-based reduction (using tunable parameter)
-        int hist = history[board.side_to_move()][m.from()][m.to()];
-        reduction -= hist / Eval::LMRHistoryDivisor;
+      if (local_moves_searched == 1) {
+        score = -alpha_beta(copy, depth - 1, ply + 1, -beta, -alpha, nodes,
+                            Move::NONE, m, true, updateStats);
+      } else {
+        // Late Move Reductions (LMR)
+        int reduction = 0;
+        if (depth >= 3 && local_moves_searched > 1 && !inCheck) {
+          reduction =
+              LMRTable[std::min(depth, 63)][std::min(local_moves_searched, 63)];
 
-        // PV nodes reduce less (using tunable parameter)
-        if (pvNode)
-          reduction -= Eval::LMRPVReduction;
+          if (m.flags() >= MoveFlags::PROMOTION_KNIGHT || board.see(m, 0) ||
+              m == killers[depth][0] || m == killers[depth][1]) {
+            reduction /= 2;
+          }
 
-        // Check/Promotion already handled by is_quiet check
-        if (m.flags() >= MoveFlags::PROMOTION_KNIGHT)
-          reduction = 0;
+          // PV nodes reduce less
+          if (pvNode)
+            reduction -= Eval::LMRPVReduction;
 
-        // Not Improving? Increase reduction (using tunable parameter)
-        if (!improving) {
-          reduction += Eval::LMRImprovingBonus;
+          // Improving bonus
+          if (improving)
+            reduction -= Eval::LMRImprovingBonus;
+
+          if (reduction < 0)
+            reduction = 0;
+
+          // History LMR
+          // Good history -> Reduce less
+          // Bad history -> Reduce more? Or just reduce less for good moves.
+          // History is typically -4096 to +4096
+          // int hist_score = history[board.side_to_move()][m.from()][m.to()];
+          // reduction -= hist_score / 2048;
+
+          // Clamp again
+          if (reduction < 0)
+            reduction = 0;
+
+          // Negative Singular Extensions
+          // If the node is singular (one move is much better), other moves are
+          // likely bad. We revert the extension (since we extended the whole
+          // node) and add a penalty.
+          if (singularExt > 0) {
+            reduction += singularExt;
+            reduction += 1;
+          }
         }
 
-        if (reduction < 0)
-          reduction = 0;
-      }
-
-      // Safe check for mate scores in TT/Search to normalize distance
-      // We do this by passing 'ply' to search, but signature is fixed.
-      // Standard: alpha/beta are "mated_in(ply)" relative.
-      // IroonRook uses raw scores relative to root?
-      // Current: MATE = 30000.
-      // We need to handle mate score adjustment in search return and call.
-      // Currently: return best_score.
-      // Let's rely on standard mate score propagation: MATE - ply.
-      // But we need to un-normalize when saving to TT/Reading from TT.
-      // For now, let's stick to LMR implementation.
-
-      if (moves_searched == 1) {
-        score = -alpha_beta(copy, depth - 1, ply + 1, -beta, -alpha, nodes);
-      } else {
-        // PVS with LMR
         score = -alpha_beta(copy, depth - 1 - reduction, ply + 1, -alpha - 1,
-                            -alpha, nodes);
+                            -alpha, nodes, Move::NONE, m, true, updateStats);
 
-        // Re-search if failed high
         if (score > alpha && reduction > 0) {
-          score =
-              -alpha_beta(copy, depth - 1, ply + 1, -alpha - 1, -alpha, nodes);
+          score = -alpha_beta(copy, depth - 1, ply + 1, -alpha - 1, -alpha,
+                              nodes, Move::NONE, m, true, updateStats);
         }
 
         if (score > alpha && score < beta) {
-          score = -alpha_beta(copy, depth - 1, ply + 1, -beta, -alpha, nodes);
+          score = -alpha_beta(copy, depth - 1, ply + 1, -beta, -alpha, nodes,
+                              Move::NONE, m, true, updateStats);
         }
       }
 
@@ -901,56 +924,12 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
       }
 
       if (score >= beta) {
-        cutoff_count++; // Multi-cut: increment counter
-
-        // Multi-Cut Pruning: if multiple moves beat beta, prune rest
-        if (!pvNode && cutoff_count >= Eval::MultiCutThreshold &&
-            depth >= Eval::MultiCutMinDepth && moves_searched >= 3) {
-          // Position too strong - opponent won't let us reach here
-          TT.save(board.key, beta, BOUND_LOWER, depth, best_move, 0, ply);
-          return beta; // Early exit!
-        }
-
         TT.save(board.key, score, BOUND_LOWER, depth, best_move, 0, ply);
-
-        // Quiet move checks
-        if (board.piece_on(best_move.to()) == NO_PIECE &&
-            best_move.flags() != MoveFlags::EP_CAPTURE) {
-
-          if (depth < 64) {
-            if (best_move != killers[depth][0]) {
-              killers[depth][1] = killers[depth][0];
-              killers[depth][0] = best_move;
-            }
-          }
-
-          // History Bonus
-          update_history(best_move, depth * depth, board.side_to_move());
-
-          // Counter Move Update
-          if (prevMove != Move::NONE) {
-            counter_moves[board.side_to_move()][prevMove.to()] = best_move;
-          }
-
-          if (prevMove != Move::NONE) {
-            Piece prevPiece = board.piece_on(prevMove.to());
-            Piece currPiece = board.piece_on(
-                best_move
-                    .from()); // Before move? No, board is not changed here.
-            // Wait, 'best_move' is from 'board'. Board is not changed in this
-            // scope (we undid or copied?) In alpha_beta, 'board' is CONST?
-            // NO, 'board' is reference. In Loop: 'Board copy = board;
-            // copy.make_move(m)'. So 'board' is the state BEFORE 'best_move'
-            // is made. So board.piece_on(best_move.from()) is the piece
-            // moving. Correct.
-            update_continuation_history(prevMove, prevPiece, best_move,
-                                        currPiece, depth * depth);
-          }
-        }
-
-        if (staticEval != 30001 && !inCheck) {
-          update_correction_history(board.side_to_move(), depth, beta,
-                                    staticEval, board);
+        // History updates
+        if (updateStats && board.piece_on(m.to()) == NO_PIECE &&
+            m.flags() < MoveFlags::EP_CAPTURE) {
+          Threads.main()->update_history(m, depth * depth,
+                                         board.side_to_move());
         }
         return beta;
       }
@@ -958,312 +937,260 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
         alpha = score;
       }
     }
-  }
 
-  if (moves_searched == 0) {
-    if (excludedMove != Move::NONE)
-      return alphaOrig;
-    if (inCheck)
-      return -MATE + ply;
-    else
-      return 0;
-  }
+    // IID Retry (Repair Move Ordering)
+    // If the first move (TT Move) fails low, our move ordering might be broken.
+    // Try to find a better move with a quick IID search.
+    if (local_moves_searched == 1 && best_score <= alphaOrig &&
+        ttMove != Move::NONE && depth >= Eval::IIDRetryMinDepth &&
+        !should_stop) {
 
-  if (moves_searched == 0) {
-    if (excludedMove != Move::NONE)
-      return alphaOrig;
-    if (inCheck)
-      return -MATE + ply;
-    else
-      return 0;
-  }
+      int reducedDepth = depth - Eval::IIDRetryReduction;
+      if (reducedDepth < 1)
+        reducedDepth = 1;
 
-  if (best_score <= alphaOrig) {
-    // Upper bound: value is at most best_score
-    TT.save(board.key, score_to_tt(best_score, ply), BOUND_UPPER, depth,
-            best_move, 0, ply);
-  } else {
-    // Exact or Lower bound (if beta cut)
-    // Actually, if we're here, we have a best_score > alphaOrig.
-    // If it was beta-cutoff, it's lower bound. If result is between alpha-beta,
-    // it's exact. But our search loop logic: if score >= beta return beta. So
-    // if we reach here, we have a move that raised alpha (PV node) or we
-    // searched all moves. If we searched all moves and found one > alphaOrig,
-    // it's exact. Wait, the search loop 'return beta' is earlier. So here, we
-    // found a new PV move (score > alpha).
-    TT.save(board.key, score_to_tt(best_score, ply), BOUND_EXACT, depth,
-            best_move, 0, ply);
+      // Perform reduced depth search to find a new best move
+      alpha_beta(board, reducedDepth, ply + 1, alpha, beta, nodes, Move::NONE,
+                 Move::NONE, true, updateStats);
 
-    // G+ 2.7: Experience Cache Record (Only exact scores at sufficient depth)
-    if (depth >= 10 && !should_stop) {
-      GlobalExperience.record(board.key, best_score, depth);
+      // Probe TT to see if we found something new
+      TTEntry tte_retry;
+      if (TT.probe(board.key, tte_retry)) {
+        Move newBest = tte_retry.move();
+        if (newBest != Move::NONE && newBest != best_move) {
+          // We found a new best move!
+          // Swap 'newBest' to be the next move in 'list'.
+
+          for (int k = i + 1; k < list.count; ++k) {
+            if (list.moves[k] == newBest) {
+              // Swap to next position (i+1)
+              std::swap(list.moves[i + 1], list.moves[k]);
+              std::swap(list.scores[i + 1], list.scores[k]);
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
-  if (staticEval != 30001 && !inCheck) {
-    update_correction_history(board.side_to_move(), depth, best_score,
-                              staticEval, board);
+  if (local_moves_searched == 0) {
+    if (excludedMove != Move::NONE) {
+      return alphaOrig;
+    }
+    if (inCheck)
+      return -MATE_SCORE + ply; // Checkmate
+    else
+      return 0; // Stalemate
   }
+
+  if (best_score <= alphaOrig) { // Fail low
+    TT.save(board.key, score_to_tt(best_score, ply), BOUND_UPPER, depth,
+            best_move, 0, ply);
+  } else {
+    TT.save(board.key, score_to_tt(best_score, ply), BOUND_EXACT, depth,
+            best_move, 0, ply);
+  }
+
   return best_score;
 }
 
-void SearchWorker::iter_deep() {
-  Board board = rootBoard; // Worker's copy
-  int max_depth = (limits.depth > 0) ? limits.depth : 64;
-  nodes_searched = 0;
-  root_stability_counter = 0;
-  last_best_move = Move::NONE;
+// Helper to extract PV from TT
+static void get_pv(Board b, std::vector<Move> &pv) {
+  TTEntry tte;
+  // Limit PV length to avoid loops
+  for (int i = 0; i < 64; ++i) {
+    if (!TT.probe(b.key, tte))
+      break;
+    Move m = tte.move();
+    if (m == Move::NONE)
+      break;
 
-  if (thread_id == 0) {
-    TT.set_generation((TT.get_generation() + 1) & 0xF);
+    // Basic validity check (can we make the move?)
+    // Note: This is expensive if we do full generation.
+    // Trust TT for now, but handle make_move failure.
+
+    // Check if move is distinct pseudo-legal?
+    // Let's just try to make it.
+    Board copy = b;
+    if (!copy.make_move(m))
+      break;
+
+    pv.push_back(m);
+    b = copy;
+
+    // Loop detection?
+    if (b.is_repetition())
+      break;
+  }
+}
+
+void SearchWorker::iter_deep() {
+  clear_history(); // Clear for new game/search?
+  // No, uci.cpp handles 'ucinewgame'. But standard ID often resets some stats?
+  // Let's NOT clear history here to allow accumulation over moves in a game.
+
+  // Initialize Root Moves
+  rootMoves.clear();
+  MoveList list;
+  MoveGen::generate_legal(rootBoard, list);
+  if (list.count == 0) {
+    // mated or stalemate
+    // Should print result?
+    // UCI handles bestmove (none).
+    return;
   }
 
-  Move bestMoveHistory[128];
-  for (int i = 0; i < 128; ++i)
-    bestMoveHistory[i] = Move::NONE;
+  for (int i = 0; i < list.count; ++i) {
+    RootMove rm;
+    rm.move = list.moves[i];
+    rm.score = -INF;
+    rootMoves.push_back(rm);
+  }
 
-  auto start_time = std::chrono::high_resolution_clock::now();
+  bestMove = Move::NONE; // Reset
+  int score = 0;
 
-  // Syzygy probe (disabled - missing tbprobe.h dependency)
-  // if (thread_id == 0 && Bitboards::popcount(board.all_pieces()) <= 7) {
-  //   int wdl = Syzygy::probe_root_wdl(board);
-  //   if (wdl != -32001) {
-  //     int score = Syzygy::wdl_to_score(wdl, 0);
-  //     std::cout << "info string Syzygy WDL: " << score << " (Win/Loss/Draw)"
-  //               << std::endl;
-  //   }
-  // }
+  // Reset nodes for this search
+  nodes_searched = 0;
+  // Timer.start_time is already initialized by Timer.init() in
+  // Threads.start_search
 
-  int score = 0; // Initialize score for aspiration window
-  rootMoves.clear();
+  int alpha = -INF;
+  int beta = INF;
 
+  // Iterative Deepening Loop
+  int max_depth = limits.depth > 0 ? limits.depth : MAX_PLY;
   for (int depth = 1; depth <= max_depth; ++depth) {
-    if (depth == 1) {
-      MoveList list;
-      MoveGen::generate_all(board, list);
-      for (int i = 0; i < list.count; ++i) {
-        if (board.make_move(list.moves[i])) {
-          RootMove rm;
-          rm.move = list.moves[i];
-          rm.score = -INF;
-          rootMoves.push_back(rm);
-        }
+    if (should_stop)
+      break;
+
+    // Aspiration Windows
+    // Only apply after first depth to have a baseline score
+    int delta = Eval::AspirationWindow;
+    if (depth > 1) {
+      alpha = std::max(-MATE, score - delta);
+      beta = std::min(MATE, score + delta);
+    } else {
+      alpha = -INF;
+      beta = INF;
+    }
+
+    int research_cnt = 0;
+
+    while (true) {
+      if (should_stop)
+        break;
+      research_cnt++;
+
+      std::vector<Move>
+          excluded; // Root search doesn't use excluded moves (singular root?)
+      // Call AlphaBetaRoot
+      int val = alpha_beta_root(rootBoard, depth, alpha, beta, nodes_searched,
+                                excluded);
+
+      if (should_stop)
+        break;
+
+      // Sort Root Moves
+      std::stable_sort(rootMoves.begin(), rootMoves.end(),
+                       [](const RootMove &a, const RootMove &b) {
+                         return a.score > b.score;
+                       });
+
+      // Update best move immediately
+      if (!rootMoves.empty()) {
+        bestMove = rootMoves[0].move;
+        score = rootMoves[0].score;
       }
+
+      // Fail Low: Widen Alpha
+      if (val <= alpha) {
+        Timer.fail_low(); // Time Extension
+        beta = (alpha + beta) / 2;
+        int growth = (Eval::AspirationGrowth * delta) / 100;
+        if (growth < 5)
+          growth = 5;
+        delta += growth;
+        alpha = std::max(-MATE, val - delta);
+
+        // Panic check
+        if (delta > Eval::AspirationPanic) {
+          alpha = -INF;
+          beta = INF;
+        }
+        continue;
+      }
+
+      // Fail High: Widen Beta
+      if (val >= beta) {
+        alpha = (alpha + beta) / 2;
+        int growth = (Eval::AspirationGrowth * delta) / 100;
+        if (growth < 5)
+          growth = 5;
+        delta += growth;
+        beta = std::min(MATE, val + delta);
+
+        // Panic check
+        if (delta > Eval::AspirationPanic) {
+          alpha = -INF;
+          beta = INF;
+        }
+        continue;
+      }
+
+      // Within window
+      score = val;
+      break;
     }
 
     if (should_stop)
       break;
 
-    // MultiPV Loop
-    std::vector<Move> excludedMoves;
-    int pv_count = limits.multipv;
-    if (pv_count < 1)
-      pv_count = 1;
-    // Don't produce more PVs than legal moves
-    // (Optimization: verify legal move count, but alpha_beta_root handles it)
+    // UCI Info Output
+    long long duration = Timer.elapsed();
+    if (duration == 0)
+      duration = 1;
 
-    for (int mpv = 0; mpv < pv_count; ++mpv) {
-      // Aspiration Windows (Reset for each PV line or share?)
-      // Usually reset.
-      if (should_stop)
-        break;
+    std::cout << "info depth " << depth << " seldepth "
+              << depth // approximation
+              << " score cp " << score << " nodes " << nodes_searched << " nps "
+              << (nodes_searched * 1000 / duration) << " time " << duration
+              << " pv";
 
-      // If not first PV, we might want to relax aspiration or just search
-      // full window For simplicity, use aspiration for first PV, full window
-      // for others? Or same logic.
-
-      int current_score = 0;
-      if (depth >= 5 && mpv == 0) {
-        int delta = Eval::AspirationWindow;
-        while (true) {
-          int alpha = std::max(-INF, score - delta);
-          int beta = std::min(INF, score + delta);
-
-          current_score = alpha_beta_root(board, depth, alpha, beta,
-                                          nodes_searched, excludedMoves);
-
-          if (should_stop)
-            break;
-
-          if (current_score <= alpha) {
-            // Fail Low (Horizon Panic?)
-            if (current_score < score - Eval::AspirationPanic)
-              Timer.extend_time(1.5);
-            delta += delta / 2 + Eval::AspirationGrowth;
-          } else if (current_score >= beta) {
-            // Fail High
-            delta += delta / 2 + Eval::AspirationGrowth;
-          } else {
-            break;
-          }
-          if (delta > 2000) {
-            current_score = alpha_beta_root(board, depth, -INF, INF,
-                                            nodes_searched, excludedMoves);
-            break;
-          }
-        }
-      } else {
-        current_score = alpha_beta_root(board, depth, -INF, INF, nodes_searched,
-                                        excludedMoves);
-      }
-
-      if (should_stop)
-        break;
-
-      // Find the best move for this PV
-      // We rely on TT to have stored the best move from alpha_beta_root
-      Move bestMove = Move::NONE;
-      TTEntry tte;
-      if (TT.probe(board.key, tte)) {
-        bestMove = tte.move();
-      }
-      this->bestMove = bestMove; // Store for external use
-
-      // IMPORTANT: If we excluded moves, the TT entry might still be old if
-      // we didn't save? alpha_beta_root saves to TT. So bestMove should be
-      // the one from THIS search.
-
-      if (bestMove != Move::NONE) {
-        excludedMoves.push_back(bestMove);
-
-        if (thread_id == 0) {
-          auto now = std::chrono::high_resolution_clock::now();
-          uint64_t duration =
-              std::chrono::duration_cast<std::chrono::milliseconds>(now -
-                                                                    start_time)
-                  .count();
-
-          // Construct PV Line
-          std::string pv_line = bestMove.to_uci(Threads.chess960);
-          Board pv_board = board;
-          pv_board.make_move(bestMove);
-
-          // Probe TT for subsequent moves
-          for (int d = 0; d < depth; ++d) {
-            TTEntry tte_pv;
-            if (TT.probe(pv_board.key, tte_pv)) {
-              Move m_pv = tte_pv.move();
-              if (m_pv == Move::NONE)
-                break;
-
-              // Verify legality to be safe (avoid illegal moves in PV)
-              MoveList legitimate_moves;
-              MoveGen::generate_legal(pv_board, legitimate_moves);
-              bool found = false;
-              for (int k = 0; k < legitimate_moves.count; ++k) {
-                if (legitimate_moves.moves[k] == m_pv) {
-                  found = true;
-                  break;
-                }
-              }
-
-              if (found) {
-                pv_line += " " + m_pv.to_uci(Threads.chess960);
-                pv_board.make_move(m_pv);
-              } else {
-                break;
-              }
-            } else {
-              break;
-            }
-          }
-
-          std::cout << "info depth " << depth << " multipv " << (mpv + 1)
-                    << " score cp " << current_score << " nodes "
-                    << nodes_searched << " time " << duration << " nps "
-                    << (nodes_searched * 1000 / std::max(duration, 1ULL))
-                    << " pv " << pv_line << std::endl;
-        }
-      } else {
-        break; // No more moves?
-      }
-
-      // Update main score for next aspiration window prediction (only for
-      // first PV)
-      if (mpv == 0) {
-        // Panic Check (Score Drop)
-        if (depth > 8 && current_score < score - 40) {
-          Timer.extend_time(1.3);
-        }
-
-        score = current_score;
-        // G+ 2.2: Root Move Stability Tracking
-        if (bestMove == last_best_move && bestMove != Move::NONE) {
-          root_stability_counter++;
-        } else {
-          root_stability_counter = 0;
-        }
-        last_best_move = bestMove;
-
-        bestMoveHistory[depth] = bestMove;
-
-        if (depth > 4) {
-          // Check if the best move has changed from the previous depth
-          if (bestMoveHistory[depth] != bestMoveHistory[depth - 1]) {
-            // Unstable! Extend time
-            Timer.extend_time(1.5); // Give 50% more time
-          }
-
-          // G+ 2.2 Predictive Finish Early
-          if (depth > 10 && root_stability_counter >= 5) {
-            Timer.finish_early();
-          }
-        }
-      }
+    std::vector<Move> pv;
+    get_pv(rootBoard, pv);
+    for (auto m : pv) {
+      std::cout << " " << m.to_uci();
     }
+    std::cout << std::endl;
 
-    // Sort root moves for next depth reordering
+    // Time Management Updates
     if (!rootMoves.empty()) {
-      std::sort(rootMoves.begin(), rootMoves.end(),
-                [](const RootMove &a, const RootMove &b) {
-                  return a.score > b.score;
-                });
+      Timer.update_best_move(rootMoves[0].move, depth);
     }
+
+    // Check Time
+    if (Timer.should_stop(nodes_searched)) {
+      should_stop = true;
+      break;
+    }
+  }
+
+  // Print Best Move
+  // If we stopped before completing depth 1? (e.g. instant input)
+  // Use whatever we have (Move Gen order if nothing else)
+  if (bestMove == Move::NONE && !rootMoves.empty()) {
+    bestMove = rootMoves[0].move;
   }
 
   if (thread_id == 0) {
-    Move bestMove = Move::NONE;
-    TTEntry tte;
-    if (TT.probe(board.key, tte)) {
-      bestMove = tte.move();
-    }
-    MoveList legal_moves;
-    MoveGen::generate_legal(board, legal_moves);
-
-    bool legal = false;
-    for (int i = 0; i < legal_moves.count; ++i) {
-      if (legal_moves.moves[i] == bestMove) {
-        legal = true;
-        break;
-      }
-    }
-
-    if (!legal && legal_moves.count > 0) {
-      // Fallback: Pick first legal move (safety net)
-      // Ideally picking best scoring, but we don't have list scores here
-      // easily
-      bestMove = legal_moves.moves[0];
-    } else if (legal_moves.count == 0) {
-      bestMove = Move::NONE;
-    }
-
-    if (bestMove != Move::NONE) {
-      this->bestMove =
-          bestMove; // Ensure member is updated even if loop incomplete
-      std::cout << "bestmove " << bestMove.to_uci(Threads.chess960)
-                << std::endl;
-    } else {
-      std::cout << "bestmove (none)" << std::endl;
-    }
+    std::cout << "bestmove "
+              << (bestMove != Move::NONE ? bestMove.to_uci() : "0000")
+              << std::endl;
   }
 }
 
-void ThreadPool::clear() {
-  for (auto *worker : workers) {
-    worker->clear_history();
-  }
-  TT.clear();
-}
 } // namespace Search
 
-} // namespace IroonRook
+} // namespace Prometheus

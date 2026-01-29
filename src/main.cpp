@@ -10,7 +10,7 @@
 #include "search/search.h"
 #include <iostream>
 
-using namespace IroonRook;
+using namespace Prometheus;
 
 int main(int argc, char *argv[]) {
   Magic::init();
@@ -30,14 +30,14 @@ int main(int argc, char *argv[]) {
     if (argc > 4)
       outfile = std::string(argv[4]);
 
-    IroonRook::run_selfplay(g, d, outfile);
+    Prometheus::run_selfplay(g, d, outfile);
   } else if (argc > 1 && std::string(argv[1]) == "perft") {
     int d = 5;
     if (argc > 2)
       d = std::stoi(argv[2]);
     Board board;
     board.set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    IroonRook::perft_divide(board, d);
+    Prometheus::perft_divide(board, d);
   } else {
     // Init threads before UCI loop
     Search::Threads.init(1);

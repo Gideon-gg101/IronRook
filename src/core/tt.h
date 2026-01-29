@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 // Packed 16-byte TT Entry
 struct TTEntry {
@@ -106,6 +106,6 @@ private:
 
 extern TranspositionTable TT;
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // TT_H

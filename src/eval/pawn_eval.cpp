@@ -1,10 +1,11 @@
 #include "pawn_eval.h"
 #include "../core/bitboard.h"
 #include "../core/magic.h"
+#include "eval.h"
 #include <algorithm>
 #include <cstring> // for memset
 
-namespace IroonRook {
+namespace Prometheus {
 namespace Eval {
 
 PawnTable GlobalPawnTable;
@@ -26,7 +27,7 @@ void PawnTable::resize(size_t mb) {
   clear();
 }
 
-void PawnTable::clear() { std::memset(entries, 0, count * sizeof(PawnEntry)); }
+void PawnTable::clear() { memset(entries, 0, count * sizeof(PawnEntry)); }
 
 PawnEntry *PawnTable::probe(uint64_t pawnKey) {
   size_t index = pawnKey % count;
@@ -80,10 +81,28 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
   Bitboard w_pawns = board.pieces(PAWN, WHITE);
   Bitboard b_pawns = board.pieces(PAWN, BLACK);
 
-  Bitboard all_pawns = w_pawns | b_pawns;
-
   // Helper bitboards
+
   auto file_bb = [](int f) { return 0x0101010101010101ULL << f; };
+
+  // 1. Pawn Majority Calculation
+  int w_queenside =
+      Bitboards::popcount(w_pawns & (file_bb(0) | file_bb(1) | file_bb(2)));
+  int w_kingside =
+      Bitboards::popcount(w_pawns & (file_bb(5) | file_bb(6) | file_bb(7)));
+  int b_queenside =
+      Bitboards::popcount(b_pawns & (file_bb(0) | file_bb(1) | file_bb(2)));
+  int b_kingside =
+      Bitboards::popcount(b_pawns & (file_bb(5) | file_bb(6) | file_bb(7)));
+
+  if (w_queenside > b_queenside)
+    score.mg += PawnMajorityBonus;
+  if (w_kingside > b_kingside)
+    score.mg += PawnMajorityBonus;
+  if (b_queenside > w_queenside)
+    score.mg -= PawnMajorityBonus;
+  if (b_kingside > w_kingside)
+    score.mg -= PawnMajorityBonus;
 
   // Evaluate White Pawns
   Bitboard temp_w = w_pawns;
@@ -92,7 +111,7 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
     int f = s % 8;
     int r = s / 8;
 
-    // Isolated
+    // Isolated (Existing)
     Bitboard adj_files = 0;
     if (f > 0)
       adj_files |= file_bb(f - 1);
@@ -104,21 +123,16 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
       score.eg += IsolatedPenalty;
     }
 
-    // Doubled
+    // Doubled (Existing)
     Bitboard file_mask = file_bb(f);
     if (Bitboards::popcount(w_pawns & file_mask) > 1) {
-      // Penalize each pawn? Or just once per file? usually each.
-      score.mg += DoubledPenalty / 2; // Split penalty
+      score.mg += DoubledPenalty / 2;
       score.eg += DoubledPenalty / 2;
     }
 
-    // Passers, Backward, Levers
+    // Passers, Candidates, Backward
     bool is_passed = false;
-
-    // Passed Logic
-    // No enemy pawns on same file or adjacent files *in front*
     Bitboard forward_mask = 0;
-    // All ranks ahead of r
     for (int rr = r + 1; rr < 8; ++rr)
       forward_mask |= (0xFFULL << (rr * 8));
 
@@ -127,85 +141,73 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
     if ((b_pawns & span) == 0) {
       is_passed = true;
       int bonus = PassedBonus[r];
-      // Protected passed pawn?
-      if (w_pawns & adj_files &
-          (file_bb(f - 1) |
-           file_bb(f + 1))) // Neighbors (simplified, check rank)
-      {
-        // Actually check if supported by pawn behind?
-        // Simply: "Connected" passed pawn.
-        Bitboard support =
-            w_pawns & adj_files & (~forward_mask) & (~(0xFFULL << (r * 8)));
-        if (support)
-          bonus += bonus / 2;
-      }
+      // Protected/Connected Logic
+      Bitboard support =
+          w_pawns & adj_files & (~forward_mask) & (~(0xFFULL << (r * 8)));
+      if (support)
+        bonus += bonus / 2;
 
-      // Rook Behind Passer
+      // Rook Behind
       Bitboard w_rooks = board.pieces(ROOK, WHITE);
       Bitboard b_rooks = board.pieces(ROOK, BLACK);
       Bitboard behind_file =
           file_mask & (~forward_mask) & (~(0xFFULL << (r * 8)));
+
       if (w_rooks & behind_file) {
-        bonus += 20; // Friendly rook behind
+        bonus += 20;
         score.eg += 20;
       }
-      if (b_rooks & behind_file) {
-        bonus -= 10;
-        bonus -= 20;
+      if (b_rooks & behind_file) { // Enemy rook behind our passer
+        bonus /= 2;
       }
-      // If Enemy rook is IN FRONT (blocking)?
-      if (b_rooks & span) {
-        bonus /= 2; // Passers blocked by rooks are weak
+      if (b_rooks & span) { // Enemy rook blocking
+        bonus /= 2;
       }
 
       score.mg += bonus;
       score.eg += bonus * 2;
-    }
-
-    // Backward Pawn
-    // 1. Not passed.
-    // 2. Cannot advance safely (controlled by enemy sentry pawn).
-    // 3. No friendly pawn support (e.g. no pawn on adjacent file behind or same
-    // rank).
-    if (!is_passed) {
-      bool supported =
-          (w_pawns & adj_files & (~forward_mask)); // Pawns behind or equal
-      if (!supported) {
-        // Check if advance is blocked or controlled
-        // Advance square: s + 8
-        Square front = Square(s + 8);
-        // Controlled by enemy pawn?
-        // Enemy pawns attacking 'front': front+7, front+9 ?
-        // i.e. r+2.
-        if (r < 6) {
-          // Pseudo attacks to 'front' from Black
-          // Black attacks SouthWest/SouthEast.
-          // Attackers to 'front': front+7, front+9 ?
-          // Check if B pawn exists that attacks 'front'.
-          Bitboard b_attacks = get_pawn_attacks(
-              front, WHITE); // Attacks FROM front (White) -> No.
-          // We need if Black attacks 'front'.
-          // Black pawns at (f-1, r+2) or (f+1, r+2)
-          // Simple: attacked_by_pawns(front, BLACK) ?
-          // But we don't have board context easily here.
-          // Manual check:
-          Bitboard enemies = b_pawns;
-          // ... (Too complex for simple check, simplified backward logic):
-          // "Behind neighbors and semi-open file?"
-          bool semi_open = !(b_pawns & forward_mask & file_mask);
-          if (semi_open) {
-            score.mg += BackwardPenalty;
-            score.eg += BackwardPenalty;
-          }
-        }
+    } else {
+      // Not passed. Check for Candidate Passer.
+      // Definition: No enemy pawn on same file.
+      // Enemy pawns on adjacent files exist (checked by !is_passed implicit
+      // logic usually, but span includes adj).
+      bool clear_file = !(b_pawns & forward_mask & file_mask);
+      if (clear_file) {
+        // We have clear runway, but controlled by adjacent enemy pawns.
+        // Bonus if we have support or numerical superiority to force it.
+        // Simple heuristic: If we have more support than they have blockers?
+        // Or just flat bonus for "Candidate"
+        score.mg += CandidatePasserBonus;
+        score.eg += CandidatePasserBonus * 2; // Worth more in endgame
       }
     }
 
-    // Pawn Lever (can capture)
-    // Check if s captures any enemy pawn
+    // Backward (Existing logic simplified)
+    if (!is_passed) {
+      bool supported = (w_pawns & adj_files & (~forward_mask));
+      if (!supported) {
+        // Semi-open logic check (simplified)
+        bool semi_open = !(b_pawns & forward_mask & file_mask);
+        if (semi_open &&
+            !(w_pawns & forward_mask & file_mask)) { // Only if blocked?
+          // Actually old logic was checking semi_open enemy file.
+          score.mg += BackwardPenalty;
+          score.eg += BackwardPenalty;
+        }
+        // We need if Black attacks 'front'.
+        // Black pawns at (f-1, r+2) or (f+1, r+2)
+        // Simple: attacked_by_pawns(front, BLACK) ?
+        // But we don't have board context easily here.
+        // Manual check:
+        // ... (Too complex for simple check, simplified backward logic):
+        // "Behind neighbors and semi-open file?"
+      }
+    }
+
+    // Pawn Lever / Tension
     Bitboard attacks = get_pawn_attacks(s, WHITE);
     if (attacks & b_pawns) {
-      score.mg += 10; // Lever bonus
+      score.mg += PawnTensionBonus; // Tension is good!
     }
   }
 
@@ -239,7 +241,7 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
     bool is_passed = false;
     Bitboard forward_mask = 0;
     for (int rr = 0; rr < r; ++rr)
-      forward_mask |= (0xFFULL << (rr * 8)); // Ranks 0 to r-1
+      forward_mask |= (0xFFULL << (rr * 8));
 
     Bitboard span = (file_mask | adj_files) & forward_mask;
 
@@ -247,7 +249,6 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
       is_passed = true;
       int bonus = PassedBonus[r_rel];
 
-      // Connected passed?
       Bitboard support =
           b_pawns & adj_files & (~forward_mask) & (~(0xFFULL << (r * 8)));
       if (support)
@@ -255,19 +256,19 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
 
       score.mg -= bonus;
       score.eg -= bonus * 2;
+    } else {
+      // Candidate Passer (Black)
+      bool clear_file = !(w_pawns & forward_mask & file_mask);
+      if (clear_file) {
+        score.mg -= CandidatePasserBonus;
+        score.eg -= CandidatePasserBonus * 2;
+      }
     }
 
-    // Backward (Simplified)
+    // Backward
     if (!is_passed) {
-      // No support
-      bool supported =
-          (b_pawns & adj_files &
-           (~forward_mask)); // "Behind" means higher rank index? No,
-                             // Black moves down. Behind is r+1..7.
-      // Wait, forward_mask is 0..r-1 (ahead).
-      // support is in ~forward_mask (r..7).
+      bool supported = (b_pawns & adj_files & (~forward_mask));
       if (!supported) {
-        // Semi-open file ahead?
         bool semi_open = !(w_pawns & forward_mask & file_mask);
         if (semi_open) {
           score.mg -= BackwardPenalty;
@@ -276,10 +277,10 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
       }
     }
 
-    // Lever
+    // Lever / Tension
     Bitboard attacks = get_pawn_attacks(s, BLACK);
     if (attacks & w_pawns) {
-      score.mg -= 10;
+      score.mg -= PawnTensionBonus;
     }
   }
 
@@ -287,4 +288,4 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
 }
 
 } // namespace Eval
-} // namespace IroonRook
+} // namespace Prometheus

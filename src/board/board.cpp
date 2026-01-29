@@ -9,7 +9,7 @@
 #include <sstream>
 #include <vector>
 
-namespace IroonRook {
+namespace Prometheus {
 
 // Helper to split string
 std::vector<std::string> split(const std::string &s, char delimiter) {
@@ -542,9 +542,9 @@ bool Board::make_move(Move m) {
   return true;
 }
 
-} // namespace IroonRook
+} // namespace Prometheus
 
-void IroonRook::Board::make_null_move() {
+void Prometheus::Board::make_null_move() {
   key ^= Zobrist::side_key;
 
   if (ep_square != SQ_NONE) {
@@ -555,16 +555,20 @@ void IroonRook::Board::make_null_move() {
   side = ~side;
 }
 
-bool IroonRook::Board::is_repetition() const {
+bool Prometheus::Board::is_repetition() const {
+  int count = 0;
   int end = std::max(0, (int)history.size() - half_moves);
   for (int i = (int)history.size() - 2; i >= end; i -= 2) {
-    if (history[i] == key)
-      return true;
+    if (history[i] == key) {
+      count++;
+      if (count >= 2)
+        return true;
+    }
   }
   return false;
 }
 
-namespace IroonRook {
+namespace Prometheus {
 
 // SEE Values
 static const int see_values[] = {
@@ -847,4 +851,4 @@ std::string Board::to_fen() const {
   return fen;
 }
 
-} // namespace IroonRook
+} // namespace Prometheus

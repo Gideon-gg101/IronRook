@@ -14,7 +14,7 @@
 #include <windows.h>
 #endif
 
-namespace IroonRook {
+namespace Prometheus {
 
 namespace Search {
 
@@ -68,7 +68,8 @@ public:
                       uint64_t &nodes, const std::vector<Move> &excluded);
   int alpha_beta(Board &board, int depth, int ply, int alpha, int beta,
                  uint64_t &nodes, Move excludedMove = Move::NONE,
-                 Move prevMove = Move::NONE);
+                 Move prevMove = Move::NONE, bool allowNull = true,
+                 bool updateStats = true);
   int quiescence(Board &board, int alpha, int beta, uint64_t &nodes,
                  int depth = 0, int ply = 0);
 
@@ -85,27 +86,15 @@ public:
 
   // Correction History: [Side][Piece][Square]
   // Adjusts evaluation based on failures/successes of static eval vs search
-  // Correction History: [Side][Piece][Square]
-  // Adjusts evaluation based on failures/successes of static eval vs search
   int correction_history[2][16][64];
 
   // Pre-allocated MoveLists to avoid stack overflow
   std::vector<MoveList> moveLists;
 
   // Continuation History: [PrevPt][PrevTo][CurrPt][CurrTo]
-  // 1-ply already exists. Plan mentions "Multi-ply".
-  // Let's add CounterMove history: [Side][PrevMove.to][CurrPt][CurrTo] ??
-  // Or just CounterMove: [Side][PrevMove.to] -> Move
-  // The plan "Counter-Move Heuristic" usually refers to storing the *best
-  // response* to a move. Table: counter_moves[Side][PrevMove.to] = Move; (Or
-  // full Move struct)
+  // CounterMove: [Side][PrevMove.to] -> Move
   Move counter_moves[2][64];
-
-  // Continuation History: [PrevPt][PrevTo][CurrPt][CurrTo]
   int continuation_history[16][64][16][64];
-  // 2-ply continuation history (response to response) ?
-  // continuation_history_2[PrevPrevPt][...]
-  // For now, let's stick to 1-ply + CounterMoves to solve Phase B part 2.
 
   // Root moves for reordering across depths
   std::vector<RootMove> rootMoves;
@@ -155,11 +144,8 @@ public:
 extern ThreadPool Threads;
 extern Book BookInstance;
 
-// Legacy wrapper (optional, or remove)
-// void iter_deep(Board &board, SearchLimits limits);
-
 } // namespace Search
 
-} // namespace IroonRook
+} // namespace Prometheus
 
 #endif // SEARCH_H
