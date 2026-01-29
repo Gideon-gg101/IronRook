@@ -77,7 +77,8 @@ def main():
 
     with open(output_file, "w", encoding="utf-8") as f:
         for i in range(num_games):
-            print(f"Playing game {i+1}/{num_games}...", end='\r')
+            if (i + 1) % 10 == 0:
+                print(f"Playing game {i+1}/{num_games}...")
             game = play_game(engine_path)
             if game:
                 exporter = chess.pgn.FileExporter(f)
