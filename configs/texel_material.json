@@ -1,0 +1,72 @@
+# Example Texel Configuration
+# Material evaluation tuning
+
+{
+    "parameters": [
+        {
+            "name": "PawnValueMg",
+            "min": 80,
+            "max": 120,
+            "step": 2
+        },
+        {
+            "name": "PawnValueEg",
+            "min": 100,
+            "max": 150,
+            "step": 2
+        },
+        {
+            "name": "KnightValueMg",
+            "min": 300,
+            "max": 350,
+            "step": 5
+        },
+        {
+            "name": "KnightValueEg",
+            "min": 300,
+            "max": 350,
+            "step": 5
+        },
+        {
+            "name": "BishopValueMg",
+            "min": 310,
+            "max": 360,
+            "step": 5
+        },
+        {
+            "name": "BishopValueEg",
+            "min": 310,
+            "max": 360,
+            "step": 5
+        },
+        {
+            "name": "RookValueMg",
+            "min": 480,
+            "max": 530,
+            "step": 5
+        },
+        {
+            "name": "RookValueEg",
+            "min": 520,
+            "max": 580,
+            "step": 5
+        },
+        {
+            "name": "QueenValueMg",
+            "min": 900,
+            "max": 1000,
+            "step": 10
+        },
+        {
+            "name": "QueenValueEg",
+            "min": 950,
+            "max": 1050,
+            "step": 10
+        }
+    ],
+    "K": 1.0,
+    "lambda": 0.0,
+    "batch_size": 1000,
+    "learning_rate": 0.01,
+    "epochs": 100
+}

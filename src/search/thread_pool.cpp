@@ -3,7 +3,6 @@
 #include "time_manager.h"
 #include <iostream>
 
-
 #include <iostream>
 
 namespace Prometheus {
@@ -21,6 +20,11 @@ void ThreadPool::init(int count) {
   for (int i = 0; i < count; ++i) {
     workers.push_back(new SearchWorker(i));
   }
+
+  // Ensure default book path is set
+  if (exp_path.empty()) {
+    exp_path = "IronBook.exp";
+  }
 }
 
 void ThreadPool::set_thread_count(int count) {
@@ -35,7 +39,7 @@ void ThreadPool::start_search(const Board &board, const SearchLimits &limits) {
   stop(); // Stop any running
 
   // Initialize Time Manager (once, global)
-  Timer.init(limits, board.side_to_move());
+  Timer.init(limits, board.side_to_move(), board);
 
   SearchLimits limits_copy = limits;
   limits_copy.multipv = default_multipv;
@@ -101,6 +105,8 @@ void ThreadPool::stop() {
     }
   }
 }
+
+void ThreadPool::ponderhit() { Timer.on_ponderhit(); }
 
 void ThreadPool::clear() {
   TT.clear();

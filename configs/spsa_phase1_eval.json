@@ -1,0 +1,134 @@
+{
+    "phase": "Phase 1 - Core Evaluation",
+    "iterations": 25,
+    "games_per_iteration": 5000,
+    "total_games": 125000,
+    "engine": {
+        "nodes_per_move": 3000,
+        "threads_per_game": 1,
+        "hash_mb": 64
+    },
+    "parallelization": {
+        "concurrency": 8,
+        "games_in_parallel": 8
+    },
+    "opening": {
+        "type": "random_epd",
+        "ply_depth": "8-12",
+        "book": "data/books/8moves_v3.epd",
+        "format": "epd",
+        "order": "random"
+    },
+    "adjudication": {
+        "draw": false,
+        "resign": false,
+        "tablebase": false
+    },
+    "output": {
+        "games_directory": "Games/spsa_phase1",
+        "pgn_file": "Games/spsa_phase1/tuning_games.pgn",
+        "results_directory": "results/phase1",
+        "save_individual_games": false,
+        "compress_pgn": false
+    },
+    "spsa": {
+        "alpha": 0.602,
+        "gamma": 0.101,
+        "a": 100,
+        "c": 5,
+        "adaptive": true
+    },
+    "parameters": {
+        "BishopPairMg": {
+            "value": 30,
+            "min": 15,
+            "max": 60,
+            "step": 5,
+            "description": "Bishop pair bonus (midgame)"
+        },
+        "BishopPairEg": {
+            "value": 50,
+            "min": 30,
+            "max": 80,
+            "step": 5,
+            "description": "Bishop pair bonus (endgame)"
+        },
+        "OutpostBonus": {
+            "value": 25,
+            "min": 10,
+            "max": 50,
+            "step": 5,
+            "description": "Knight/Bishop on outpost square"
+        },
+        "PermanentOutpostBonus": {
+            "value": 15,
+            "min": 5,
+            "max": 30,
+            "step": 3,
+            "description": "Outpost that cannot be attacked by pawns"
+        },
+        "HarassedByPawnPenalty": {
+            "value": -20,
+            "min": -40,
+            "max": -5,
+            "step": 5,
+            "description": "Minor piece harassed by enemy pawn"
+        },
+        "OpenFileBonus": {
+            "value": 20,
+            "min": 10,
+            "max": 40,
+            "step": 5,
+            "description": "Rook on open file"
+        },
+        "SemiOpenFileBonus": {
+            "value": 10,
+            "min": 5,
+            "max": 25,
+            "step": 3,
+            "description": "Rook on semi-open file"
+        }
+    },
+    "validation": {
+        "enabled": true,
+        "frequency": 5,
+        "games_per_validation": 5000,
+        "sprt": {
+            "elo0": -5,
+            "elo1": 0,
+            "alpha": 0.05,
+            "beta": 0.05
+        },
+        "reject_on_regression": true,
+        "rollback_on_fail": true
+    },
+    "convergence": {
+        "parameter_delta_threshold": 0.05,
+        "elo_plateau_iterations": 3,
+        "min_iterations": 15,
+        "auto_stop": true
+    },
+    "test_suites": {
+        "tactical": "tests/suites/tactical.epd",
+        "strategic": "tests/suites/strategic.epd",
+        "endgame": "tests/suites/endgame.epd"
+    },
+    "timeline": {
+        "games_per_day": 3840,
+        "estimated_days": 33,
+        "estimated_weeks": 5,
+        "notes": "Based on 8-core PC, 3000 nodes/move, 24/7 runtime"
+    },
+    "expected_results": {
+        "elo_gain": "+50-100 Elo",
+        "parameter_convergence": "15-20 iterations expected",
+        "noise_level": "Low (node-based, single-threaded)",
+        "confidence": "95% with 125K games"
+    },
+    "next_phase": {
+        "phase": "Phase 2 - Search Parameters",
+        "params": "SE, NMP, LMR (13 params)",
+        "games": "100k-150k",
+        "notes": "After Phase 1 converges"
+    }
+}

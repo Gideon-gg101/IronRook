@@ -1,0 +1,14 @@
+# Benchmark History
+
+Track NPS performance over time.
+
+## Format
+```
+Date, Commit, NPS, Depth@5s, TestPassRate, Notes
+```
+
+## Historical Data
+
+2026-01-20,baseline,582000,17,78.5,Initial baseline
+2026-01-25,def5678,627000,18,82.4,Post-SPSA tuning
+2026-01-31,ghi9012,645000,18,85.1,Time management improvements

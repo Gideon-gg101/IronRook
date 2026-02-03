@@ -17,7 +17,10 @@ int main(int argc, char *argv[]) {
   Zobrist::init();
 
   if (argc > 1 && std::string(argv[1]) == "bench") {
-    Benchmark::bench(13);
+    int depth = 13;
+    if (argc > 2)
+      depth = std::stoi(argv[2]);
+    Benchmark::bench(depth);
   } else if (argc > 1 && std::string(argv[1]) == "selfplay") {
     // selfplay <games> <depth> [output_file]
     int g = 10;

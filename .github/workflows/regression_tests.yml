@@ -1,0 +1,86 @@
+name: Regression Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+          pip install cutechess-cli || echo "cutechess-cli not available via pip"
+      
+      - name: Build baseline engine
+        run: |
+          git fetch origin main:main || true
+          git checkout main
+          cmake -B build_baseline -DCMAKE_BUILD_TYPE=Release .
+          cmake --build build_baseline --config Release
+          cp build_baseline/IronRook build_baseline/IronRook_baseline
+          git checkout -
+      
+      - name: Build candidate engine
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release .
+          cmake --build build --config Release
+      
+      - name: Run test suites
+        run: |
+          python scripts/run_test_suites.py build/IronRook \
+            --suites tests/suites/*.epd \
+            --time 3000 \
+            --output test_results.json \
+            --min-pass-rate 75.0
+        continue-on-error: false
+      
+      - name: Run SPRT regression test
+        if: github.event_name == 'pull_request'
+        run: |
+          python scripts/sprt_test.py \
+            build_baseline/IronRook_baseline \
+            build/IronRook \
+            --elo0 -5 \
+            --elo1 0 \
+            --tc 5+0.05 \
+            --max-games 500
+        continue-on-error: false
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            test_results.json
+            sprt_games.pgn
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('test_results.json', 'utf8'));
+            const passRate = results.overall_pass_rate.toFixed(1);
+            const comment = `## Test Suite Results\n\n✅ Pass Rate: ${passRate}%\n\nSee artifacts for detailed results.`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

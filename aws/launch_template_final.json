@@ -1,0 +1,45 @@
+{
+  "LaunchTemplateName": "prometheus-phase1-worker",
+  "VersionDescription": "Worker template for Phase 1 SPSA tuning",
+  "LaunchTemplateData": {
+    "ImageId": "ami-0532be01f26a3de55",
+    "InstanceType": "t3.micro",
+    "IamInstanceProfile": {
+      "Name": "PrometheusS3Access"
+    },
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+          "VolumeSize": 20,
+          "VolumeType": "gp3",
+          "DeleteOnTermination": true
+        }
+      }
+    ],
+    "UserData": "IyEvYmluL2Jhc2gKIyBBV1MgV29ya2VyIFNjcmlwdCAtIFJ1bnMgb24gZWFjaCBFQzIgU3BvdCBpbnN0YW5jZQojIFB1bGxzIHBhcmFtcyBmcm9tIFMzLCBnZW5lcmF0ZXMgZ2FtZXMsIHB1c2hlcyByZXN1bHRzIGJhY2sKCnNldCAtZQoKV09SS0VSX0lEPSQoZWMyLW1ldGFkYXRhIC0taW5zdGFuY2UtaWQgfCBjdXQgLWQgIiAiIC1mIDIpClMzX0JVQ0tFVD0iczM6Ly9wcm9tZXRoZXVzLXR1bmluZy1kYXRhIgpHQU1FU19QRVJfV09SS0VSPTM5MDAgICMgMTI1SyAvIDMyIHdvcmtlcnMKVkNQVVM9JChucHJvYykKCmVjaG8gIj09PSBQcm9tZXRoZXVzIFR1bmluZyBXb3JrZXIgPT09IiAKZWNobyAiV29ya2VyIElEOiAkV09SS0VSX0lEIgplY2hvICJ2Q1BVczogJFZDUFVTIgplY2hvICJHYW1lcyB0byBnZW5lcmF0ZTogJEdBTUVTX1BFUl9XT1JLRVIiCmVjaG8KCiMgMS4gSW5zdGFsbCBkZXBlbmRlbmNpZXMKZWNobyAiWzEvNl0gSW5zdGFsbGluZyBkZXBlbmRlbmNpZXMuLi4iCnN1ZG8geXVtIHVwZGF0ZSAteQpzdWRvIHl1bSBpbnN0YWxsIC15IHdnZXQgYXdzLWNsaQoKIyAyLiBEb3dubG9hZCBlbmdpbmUKZWNobyAiWzIvNl0gRG93bmxvYWRpbmcgZW5naW5lLi4uIgphd3MgczMgY3AgJFMzX0JVQ0tFVC9lbmdpbmUvSXJvblJvb2tfbGludXggLi9Jcm9uUm9vawpjaG1vZCAreCBJcm9uUm9vawoKIyAzLiBEb3dubG9hZCBjdXRlY2hlc3MtY2xpCmVjaG8gIlszLzZdIEluc3RhbGxpbmcgY3V0ZWNoZXNzLWNsaS4uLiIKd2dldCAtcSBodHRwczovL2dpdGh1Yi5jb20vY3V0ZWNoZXNzL2N1dGVjaGVzcy9yZWxlYXNlcy9kb3dubG9hZC8xLjIuMC9jdXRlY2hlc3MtY2xpLTEuMi4wLWxpbnV4NjQudGFyLmd6CnRhciAteHpmIGN1dGVjaGVzcyoudGFyLmd6CmNobW9kICt4IGN1dGVjaGVzcy1jbGkKCiMgNC4gRG93bmxvYWQgb3BlbmluZyBib29rCmVjaG8gIls0LzZdIERvd25sb2FkaW5nIG9wZW5pbmcgYm9vayBhbmQgZXhwZXJpZW5jZS4uLiIKYXdzIHMzIGNwICRTM19CVUNLRVQvb3BlbmluZ3MvOG1vdmVzX3YzLmVwZCAuL29wZW5pbmdzLmVwZAphd3MgczMgY3AgJFMzX0JVQ0tFVC9vcGVuaW5ncy9Jcm9uQm9vay5leHAgLi9Jcm9uQm9vay5leHAKCiMgNS4gR2VuZXJhdGUgZ2FtZXMKZWNobyAiWzUvNl0gR2VuZXJhdGluZyAkR0FNRVNfUEVSX1dPUktFUiBnYW1lcy4uLiIKZWNobyAiQ29uY3VycmVuY3k6ICRWQ1BVUyIKZWNobwoKLi9jdXRlY2hlc3MtY2xpIFwKICAtZW5naW5lIGNtZD0uL0lyb25Sb29rIG5hbWU9SXJvblJvb2sgb3B0aW9uLkV4cGVyaWVuY2VQYXRoPUlyb25Cb29rLmV4cCBcCiAgLWVuZ2luZSBjbWQ9Li9Jcm9uUm9vayBuYW1lPUlyb25Sb29rIG9wdGlvbi5FeHBlcmllbmNlUGF0aD1Jcm9uQm9vay5leHAgXAogIC1lYWNoIHByb3RvPXVjaSB0Yz1pbmYvMzAwMCBcCiAgLWdhbWVzICRHQU1FU19QRVJfV09SS0VSIFwKICAtY29uY3VycmVuY3kgJFZDUFVTIFwKICAtcGdub3V0IGdhbWVzXyR7V09SS0VSX0lEfS5wZ24gXAogIC1yZWNvdmVyIFwKICAtcmVwZWF0IFwKICAtb3BlbmluZ3MgZmlsZT1vcGVuaW5ncy5lcGQgZm9ybWF0PWVwZCBvcmRlcj1yYW5kb20KCiMgNi4gVXBsb2FkIHJlc3VsdHMKZWNobyAiWzYvNl0gVXBsb2FkaW5nIHJlc3VsdHMuLi4iCmF3cyBzMyBjcCBnYW1lc18ke1dPUktFUl9JRH0ucGduICRTM19CVUNLRVQvcGhhc2UxL2dhbWVzLwoKIyBSZXBvcnQgY29tcGxldGlvbgpHQU1FU19HRU5FUkFURUQ9JChncmVwIC1jICdcW0V2ZW50JyBnYW1lc18ke1dPUktFUl9JRH0ucGduIHx8IGVjaG8gIjAiKQplY2hvICJ7XCJ3b3JrZXJfaWRcIjogXCIkV09SS0VSX0lEXCIsIFwiZ2FtZXNcIjogJEdBTUVTX0dFTkVSQVRFRCwgXCJ0aW1lc3RhbXBcIjogXCIkKGRhdGUgLXUgKyVZLSVtLSVkVCVIOiVNOiVTWilcIn0iID4gc3RhdHVzLmpzb24KYXdzIHMzIGNwIHN0YXR1cy5qc29uICRTM19CVUNLRVQvcGhhc2UxL3N0YXR1cy8ke1dPUktFUl9JRH0uanNvbgoKZWNobwplY2hvICLinIUgV29ya2VyICRXT1JLRVJfSUQgY29tcGxldGUhIgplY2hvICJHZW5lcmF0ZWQ6ICRHQU1FU19HRU5FUkFURUQgZ2FtZXMiCmVjaG8gIlVwbG9hZGVkIHRvOiAkUzNfQlVDS0VUL3BoYXNlMS9nYW1lcy9nYW1lc18ke1dPUktFUl9JRH0ucGduIgplY2hvCgojIFNodXRkb3duIChvcHRpb25hbCAtIHNhdmVzIGNvc3QpCiMgc3VkbyBzaHV0ZG93biAtaCBub3cK",
+    "TagSpecifications": [
+      {
+        "ResourceType": "instance",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Prometheus-Worker"
+          },
+          {
+            "Key": "Phase",
+            "Value": "1"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "SpotFleet"
+          }
+        ]
+      }
+    ],
+    "MetadataOptions": {
+      "HttpTokens": "required",
+      "HttpPutResponseHopLimit": 1
+    }
+  }
+}

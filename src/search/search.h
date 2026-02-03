@@ -35,6 +35,7 @@ struct SearchLimits {
   int moves_to_go = 0;
   int multipv = 1;
   int contempt = 0; // Centipawns (positive = avoid draw)
+  bool ponder = false;
 };
 
 struct RootMove {
@@ -126,6 +127,7 @@ public:
   void init(int count);
   void start_search(const Board &board, const SearchLimits &limits);
   void stop();
+  void ponderhit();
   void clear();
   void set_thread_count(int count);
 
@@ -133,7 +135,8 @@ public:
 
   int default_multipv = 1;
   int default_contempt = 0;
-  std::string exp_path; // Added exp_path
+  int default_nodes = 0;
+  std::string exp_path = "IronBook.exp"; // Default to IronBook.exp
   bool use_book = false;
   bool chess960 = false;
   std::string book_path;

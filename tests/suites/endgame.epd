@@ -1,0 +1,31 @@
+# Endgame Test Suite - Lasker & Fine positions
+# Format: FEN; bm best_move; id "description";
+
+# Lasker endgame positions
+8/8/8/4k3/8/8/3K4/8 w - - 0 1; bm Kc3,Kd3,Ke3; id "Lasker - King centralization";
+8/p7/P7/8/8/8/3k4/3K4 w - - 0 1; bm Kc2; id "Lasker - Opposition";
+8/8/8/3k4/p7/8/1K6/8 w - - 0 1; bm Kb3; id "Lasker - Rook pawn draw";
+8/8/p5p1/P5p1/6P1/8/8/1k4K1 w - - 0 1; bm Kf2; id "Lasker - Pawn endgame";
+8/8/4k3/8/8/8/4P3/4K3 w - - 0 1; bm Kd2,Ke2,Kf2; id "Lasker - Simple pawn advance";
+
+# Fine endgame positions
+8/8/8/8/3k4/8/8/4K3 w - - 0 1; bm Kd2,Ke2,Kf2; id "Fine.01 - King activity";
+8/5k2/8/5P2/5K2/8/8/8 w - - 0 1; bm Kg5; id "Fine.02 - King in front of pawn";
+8/8/8/3k4/3P4/3K4/8/8 w - - 0 1; bm Kc3,Ke3; id "Fine.03 - Critical square";
+8/8/4k3/8/8/8/3PPP2/4K3 w - - 0 1; bm e3; id "Fine.04 - Pawn majority";
+8/8/8/1k6/1p6/1P6/8/1K6 w - - 0 1; bm Ka2; id "Fine.05 - Zugzwang defense";
+
+# Bishop endgames
+8/8/8/8/4k3/8/5B2/4K3 w - - 0 1; bm Ke2,Kf2; id "K+B vs K - Centralization";
+8/8/4k3/8/4P3/4K3/8/8 w - - 0 1; bm Kd3,Kf3; id "KP vs K - Winning";
+8/8/p7/8/P7/8/8/1k4K1 w - - 0 1; bm Kb2; id "Rook pawn - Draw";
+
+# Rook endgames
+8/8/8/3k4/8/8/r7/4RK2 w - - 0 1; bm Kf2,Kg2; id "Rook endgame - Centralize king";
+4r3/8/8/8/8/8/4R3/4K1k1 w - - 0 1; bm Kd2,Kf2; id "Lucena position";
+6k1/6p1/6P1/5K2/r7/8/8/3R4 w - - 0 1; bm Rd8+; id "Rook endgame - Cut off king";
+8/6k1/6p1/6P1/8/5K2/r7/3R4 w - - 0 1; bm Rd7; id "Seventh rank";
+
+# Queen endgames  
+8/8/8/8/8/4k3/8/4QK2 w - - 0 1; bm Qe2+,Qe3+; id "Q vs K - Drive to edge";
+8/8/8/4k3/8/4K3/8/6Q1 w - - 0 1; bm Qg5+; id "Q vs K - Staircase method";

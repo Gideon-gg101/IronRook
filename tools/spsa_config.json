@@ -55,45 +55,23 @@
       "start": 8,
       "c": 1.5,
       "c_end": 0.5
-    },
-    {
-      "name": "SpaceSquareBonus",
-      "min": 0,
-      "max": 15,
-      "start": 5,
-      "c": 1.0,
-      "c_end": 0.5
-    },
-    {
-      "name": "SingularMargin",
-      "min": 1,
-      "max": 4,
-      "start": 2,
-      "c": 0.5,
-      "c_end": 0.25
-    },
-    {
-      "name": "SingularMinDepth",
-      "min": 6,
-      "max": 12,
-      "start": 8,
-      "c": 1.0,
-      "c_end": 0.5
     }
   ],
   "spsa_settings": {
-    "iterations": 500,
-    "games_per_iteration": 100,
+    "iterations": 30,
+    "games_per_iteration": 5000,
     "alpha": 0.602,
     "gamma": 0.101,
     "A": 100
   },
   "test_settings": {
-    "engine_path": "../build/Prometheus.exe",
-    "baseline_path": "../build/Prometheus.exe",
-    "time_control": "10+0.1",
+    "engine_path": "c:/Users/Administrator/Desktop/GideonInspired/Chess2.0/Engines2.0/Prometheus/build/IronRook.exe",
+    "baseline_path": "c:/Users/Administrator/Desktop/GideonInspired/Chess2.0/Engines2.0/Prometheus/build/IronRook.exe",
+    "time_control": "nodes=3000",
     "opening_book": null,
     "threads": 1,
-    "hash": 64
+    "hash": 64,
+    "concurrency": 128,
+    "cutechess_path": "cutechess-cli"
   }
 }

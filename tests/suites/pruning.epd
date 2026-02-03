@@ -1,0 +1,18 @@
+# Pruning Stress Tests - Positions that stress search pruning
+# Format: FEN; bm best_move; id "description";
+
+# Deep tactical sequences
+r2qk2r/1p1b1ppp/p1nppn2/6B1/1b1NP3/2N5/PPP2PPP/R2QKB1R w KQkq - 0 1; bm Nxe6; id "Pruning - Deep tactics";
+r1bqr1k1/pp3ppp/2p5/3n4/3P4/PB3N2/1PQ2PPP/R1B2RK1 w - - 0 1; bm Bxf7+; id "Pruning - Sacrifice";
+
+# Horizon effect
+1r4k1/5ppp/8/4p3/1P2P3/P4P2/5PKP/3R4 w - - 0 1; bm Rd7; id "Horizon - Pawn push";
+8/5pk1/8/8/8/8/5PPK/r7 w - - 0 1; bm g4; id "Horizon - Escape";
+
+# Null move verification
+r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1; bm Ng5; id "Null move - Tactical blow";
+rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 1; bm Nbd7; id "Null move - Quiet development";
+
+# Singular extension tests
+6k1/5p2/6p1/8/7p/7P/5PPK/r7 b - - 0 1; bm Ra2; id "Singular - Forcing sequence";
+8/8/1p5p/p1p3p1/P1P3P1/1P5P/8/1k4K1 w - - 0 1; bm Kf2; id "Singular - Endgame precision";

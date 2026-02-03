@@ -3,7 +3,12 @@
 #include "../core/magic.h"
 #include "eval.h"
 #include <algorithm>
-#include <cstring> // for memset
+#include <cstring>
+#include <vector> // Added based on example, assuming 'memset' was a typo for a comment
+// The original code had '#include <cstring> // for memset'.
+// The instruction was "Add include <cstring>" and the example showed it without
+// the comment and with '<vector>'. Assuming the intent was to ensure <cstring>
+// is present (which it was), remove its comment, and add <vector>.
 
 namespace Prometheus {
 namespace Eval {
@@ -182,29 +187,44 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
       }
     }
 
-    // Backward (Existing logic simplified)
+    // Backward Pawn Logic
     if (!is_passed) {
       bool supported = (w_pawns & adj_files & (~forward_mask));
       if (!supported) {
-        // Semi-open logic check (simplified)
         bool semi_open = !(b_pawns & forward_mask & file_mask);
-        if (semi_open &&
-            !(w_pawns & forward_mask & file_mask)) { // Only if blocked?
-          // Actually old logic was checking semi_open enemy file.
-          score.mg += BackwardPenalty;
-          score.eg += BackwardPenalty;
+        if (semi_open) {
+          // Check if stop square is controlled by enemy pawns
+          Square stop_sq = static_cast<Square>(s + 8);
+          Bitboard enemy_attacks_on_stop = get_pawn_attacks(
+              stop_sq, WHITE); // White attacks FROM stop = Black attacks TO
+                               // stop (symmetry)
+          // Wait, get_pawn_attacks(sq, COLOR) returns squares attacked BY a
+          // pawn of COLOR at sq. We want to know if 'stop_sq' is attacked by
+          // BLACK pawns. get_pawn_attacks(stop_sq, WHITE) -> squares a WHITE
+          // pawn at stop_sq would attack. These are exactly the squares where a
+          // BLACK pawn would need to be to attack stop_sq! (captures are
+          // symmetric).
+
+          if (enemy_attacks_on_stop & b_pawns) {
+            score.mg -= BackwardPawnPenalty;
+            score.eg -= BackwardPawnPenalty;
+          }
         }
-        // We need if Black attacks 'front'.
-        // Black pawns at (f-1, r+2) or (f+1, r+2)
-        // Simple: attacked_by_pawns(front, BLACK) ?
-        // But we don't have board context easily here.
-        // Manual check:
-        // ... (Too complex for simple check, simplified backward logic):
-        // "Behind neighbors and semi-open file?"
       }
     }
 
-    // Pawn Lever / Tension
+    // Pawn Break / Lever Potential
+    // Check if pushing the pawn creates a threat (attacks an enemy pawn)
+    Square push_sq = static_cast<Square>(s + 8);
+    if (r < 6 && board.piece_on(push_sq) == NO_PIECE) {
+      Bitboard push_attacks = get_pawn_attacks(push_sq, WHITE);
+      if (push_attacks & b_pawns) {
+        score.mg += PawnBreakBonus;
+        score.eg += PawnBreakBonus;
+      }
+    }
+
+    // Pawn Tension (Existing)
     Bitboard attacks = get_pawn_attacks(s, WHITE);
     if (attacks & b_pawns) {
       score.mg += PawnTensionBonus; // Tension is good!
@@ -265,15 +285,35 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
       }
     }
 
-    // Backward
+    // Backward (Black)
     if (!is_passed) {
       bool supported = (b_pawns & adj_files & (~forward_mask));
       if (!supported) {
         bool semi_open = !(w_pawns & forward_mask & file_mask);
         if (semi_open) {
-          score.mg -= BackwardPenalty;
-          score.eg -= BackwardPenalty;
+          Square stop_sq = static_cast<Square>(s - 8);
+          // Check if stop square attacked by White pawns
+          // get_pawn_attacks(stop_sq, BLACK) -> squares a BLACK pawn at stop_sq
+          // would attack. These are where WHITE pawns would be to attack
+          // stop_sq.
+          Bitboard enemy_attacks_on_stop = get_pawn_attacks(stop_sq, BLACK);
+
+          if (enemy_attacks_on_stop & w_pawns) {
+            score.mg +=
+                BackwardPawnPenalty; // Penalty for Black (positive score)
+            score.eg += BackwardPawnPenalty;
+          }
         }
+      }
+    }
+
+    // Pawn Break / Lever Potential (Black)
+    Square push_sq = static_cast<Square>(s - 8);
+    if (r > 1 && board.piece_on(push_sq) == NO_PIECE) {
+      Bitboard push_attacks = get_pawn_attacks(push_sq, BLACK);
+      if (push_attacks & w_pawns) {
+        score.mg -= PawnBreakBonus;
+        score.eg -= PawnBreakBonus;
       }
     }
 
@@ -281,6 +321,30 @@ ScorePair evaluate_pawns(const Board &board, PawnTable &pt) {
     Bitboard attacks = get_pawn_attacks(s, BLACK);
     if (attacks & w_pawns) {
       score.mg -= PawnTensionBonus;
+    }
+  }
+
+  // === ZUGZWANG-AWARE PAWN ENDGAMES ===
+  // In pure pawn endgames, tempo (side to move) can be critical
+  // Detect pure pawn endgame and apply tempo bonus
+  int w_pieces = Bitboards::popcount(board.pieces(KNIGHT, WHITE)) +
+                 Bitboards::popcount(board.pieces(BISHOP, WHITE)) +
+                 Bitboards::popcount(board.pieces(ROOK, WHITE)) +
+                 Bitboards::popcount(board.pieces(QUEEN, WHITE));
+  int b_pieces = Bitboards::popcount(board.pieces(KNIGHT, BLACK)) +
+                 Bitboards::popcount(board.pieces(BISHOP, BLACK)) +
+                 Bitboards::popcount(board.pieces(ROOK, BLACK)) +
+                 Bitboards::popcount(board.pieces(QUEEN, BLACK));
+
+  // Pure pawn endgame: no pieces, both sides have pawns
+  if (w_pieces == 0 && b_pieces == 0 && Bitboards::popcount(w_pawns) > 0 &&
+      Bitboards::popcount(b_pawns) > 0) {
+    // Tempo bonus: side to move gets small advantage
+    int tempo = 15; // 15cp tempo bonus
+    if (board.side_to_move() == WHITE) {
+      score.eg += tempo;
+    } else {
+      score.eg -= tempo;
     }
   }
 

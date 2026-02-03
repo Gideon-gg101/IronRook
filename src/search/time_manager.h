@@ -1,6 +1,7 @@
 #ifndef TIME_MANAGER_H
 #define TIME_MANAGER_H
 
+#include "../board/board.h"
 #include "search.h"
 #include <chrono>
 
@@ -9,7 +10,7 @@ namespace Search {
 
 class TimeManager {
 public:
-  void init(const SearchLimits &limits, Color sideToMove);
+  void init(const SearchLimits &limits, Color sideToMove, const Board &board);
   bool should_stop(uint64_t accumulated_nodes);
   long long elapsed() const;
 
@@ -24,6 +25,8 @@ public:
   void update_best_move(Move m, int depth);
   void fail_low();
 
+  void on_ponderhit();
+
 private:
   std::chrono::high_resolution_clock::time_point start_time;
   int soft_limit; // Target time
@@ -34,8 +37,15 @@ private:
 
   Move last_best_move = Move::NONE;
   int stability_counter = 0;
+  double volatility = 0.0;
 
   int original_soft_limit;
+
+  // Time smoothing
+  int last_allocated_time = 0;
+  double smoothing_alpha = 0.7; // EMA weight for current allocation
+
+  int smooth_time_allocation(int raw_allocation);
 };
 
 extern TimeManager Timer;

@@ -1,0 +1,18 @@
+# Strategic Test Suite - Positional understanding
+# Format: FEN; bm best_move; id "description";
+
+# Outpost creation
+r1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQkq - 0 1; bm Bd3; id "Outpost preparation";
+rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 0 1; bm e6; id "Prevent outpost";
+
+# Pawn structure
+rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 1; bm f3; id "Pawn chain";
+r1bqk2r/ppp1bppp/2n5/3p4/3Pn3/2N1PN2/PPP2PPP/R1BQKB1R w KQkq - 0 1; bm Bd3; id "Central control";
+
+# Piece activity
+r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQR1K1 w - - 0 1; bm a4; id "Space advantage";
+rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 0 1; bm Bg5; id "Pin development";
+
+# King safety
+r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1; bm O-O; id "Castling priority";
+2r2rk1/1p3pp1/p2p1q1p/3Pp3/P3P3/1Q6/1P3PPP/2RR2K1 w - - 0 1; bm Qb7; id "Attack weak pawns";

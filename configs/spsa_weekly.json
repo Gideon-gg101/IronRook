@@ -1,0 +1,44 @@
+# Example SPSA Configuration
+# Quick weekly tuning run
+
+{
+  "iterations": 50,
+  "games_per_iteration": 50,
+  "time_control": "10+0.1",
+  "alpha": 0.602,
+  "gamma": 0.101,
+  "a": 100,
+  "c": 5,
+  "parameters": {
+    "SingularMargin": {
+      "value": 32,
+      "min": 16,
+      "max": 64,
+      "step": 5
+    },
+    "NullMoveReduction": {
+      "value": 3,
+      "min": 2,
+      "max": 4,
+      "step": 1
+    },
+    "LMR_Base": {
+      "value": 75,
+      "min": 50,
+      "max": 120,
+      "step": 10
+    },
+    "AspirationWindow": {
+      "value": 15,
+      "min": 10,
+      "max": 30,
+      "step": 3
+    },
+    "FutilityMargin": {
+      "value": 120,
+      "min": 80,
+      "max": 180,
+      "step": 10
+    }
+  }
+}

@@ -37,7 +37,7 @@ void perft_divide(Board &board, int depth) {
     Board copy = board;
     if (copy.make_move(m)) {
       uint64_t nodes = perft(copy, depth - 1);
-      std::cout << m.from() << m.to() << ": " << nodes << "\n";
+      std::cout << m.to_uci(false) << ": " << nodes << "\n";
       total_nodes += nodes;
     }
   }

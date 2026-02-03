@@ -1,0 +1,47 @@
+{
+    "IamFleetRole": "arn:aws:iam::838979473273:role/aws-ec2-spot-fleet-tagging-role",
+    "AllocationStrategy": "capacityOptimized",
+    "TargetCapacity": 16,
+    "SpotMaintenanceStrategies": {
+        "CapacityRebalance": {
+            "ReplacementStrategy": "launch"
+        }
+    },
+    "TerminateInstancesWithExpiration": true,
+    "ValidFrom": "2026-01-31T00:00:00Z",
+    "ValidUntil": "2026-03-31T23:59:59Z",
+    "LaunchTemplateConfigs": [
+        {
+            "LaunchTemplateSpecification": {
+                "LaunchTemplateId": "lt-xxxxx",
+                "Version": "$Latest"
+            },
+            "Overrides": [
+                {
+                    "InstanceType": "t3.micro",
+                    "WeightedCapacity": 1.0,
+                    "Priority": 1.0
+                }
+            ]
+        }
+    ],
+    "TagSpecifications": [
+        {
+            "ResourceType": "spot-fleet-request",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "Prometheus-Phase1-Fleet"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "Prometheus-SPSA"
+                },
+                {
+                    "Key": "Phase",
+                    "Value": "1"
+                }
+            ]
+        }
+    ]
+}

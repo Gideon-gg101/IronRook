@@ -1,0 +1,14 @@
+# Fortress Positions - Draw despite material disadvantage
+# Format: FEN; id "description"; ce expected_score (should be near 0);
+
+# Rook + Pawn vs Rook
+8/8/8/8/8/3k4/r2pK3/3R4 w - - 0 1; id "Philidor position - draw"; ce 0;
+8/8/4k3/8/4K3/8/r2R4/8 w - - 0 1; id "Rook endgame - fortress"; ce 0;
+8/5k2/8/1r6/8/8/2R1K3/8 w - - 0 1; id "Third rank defense"; ce 0;
+
+# Bishop wrong color
+8/8/8/8/8/1k6/1p6/1KNB4 w - - 0 1; id "Wrong color bishop - draw"; ce 0;
+8/8/8/8/k7/p7/PB6/K7 w - - 0 1; id "Rook pawn + wrong bishop"; ce 0;
+
+# Passive rook defense
+8/8/2k5/8/2K1R3/8/r7/8 w - - 0 1; id "Passive rook defense - draw"; ce 0;

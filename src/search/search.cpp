@@ -400,14 +400,6 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
     return 0;
   }
 
-  // G+ 2.7: Experience Cache Probe
-  int exp_score, exp_depth;
-  if (GlobalExperience.probe(board.key, exp_score, exp_depth)) {
-    if (exp_depth >= depth) {
-      return exp_score;
-    }
-  }
-
   // Check Extensions
   bool inCheck = board.is_square_attacked(
       Bitboards::lsb(board.pieces(KING, board.side_to_move())),
@@ -438,7 +430,8 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
 
   // Use rootMoves if already populated (Iterative Deepening carry-over)
   if (!rootMoves.empty()) {
-    for (auto &rm : rootMoves) {
+    for (size_t i = 0; i < rootMoves.size(); ++i) {
+      RootMove &rm = rootMoves[i];
       Move m = rm.move;
 
       // Skip excluded moves
@@ -508,6 +501,38 @@ int SearchWorker::alpha_beta_root(Board &board, int depth, int alpha, int beta,
         }
         if (score > alpha) {
           alpha = score;
+        }
+
+        // IID Retry at Root (Repair Move Ordering)
+        if (moves_searched == 1 && score <= alphaOrig &&
+            depth >= Eval::IIDRetryMinDepth && !should_stop) {
+          // PV move failed low. Re-search remaining moves at reduced depth to
+          // find a better candidate.
+          int reducedDepth = depth - Eval::IIDRetryReduction;
+          if (reducedDepth < 1)
+            reducedDepth = 1;
+
+          // We need to re-score remaining moves
+          for (size_t k = i + 1; k < rootMoves.size(); ++k) {
+            // Check for exclusion/pruning again? No, just search.
+            Move nextM = rootMoves[k].move;
+            // Quick check: is it legal? RootMoves are legal.
+            // Check history pruning? Maybe safe to skip for repair.
+
+            Board sim = board;
+            if (sim.make_move(nextM)) {
+              int rScore = -alpha_beta(sim, reducedDepth, 1, -INF, INF, nodes,
+                                       Move::NONE, nextM, true);
+              if (!should_stop) {
+                rootMoves[k].score = rScore;
+              }
+            }
+          }
+          // Re-sort remaining moves based on new scores
+          std::stable_sort(rootMoves.begin() + i + 1, rootMoves.end(),
+                           [](const RootMove &a, const RootMove &b) {
+                             return a.score > b.score;
+                           });
         }
       }
     }
@@ -638,6 +663,15 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   }
 
   bool pvNode = (beta - alpha > 1);
+
+  // G+ 2.7: Experience Cache Probe
+  int exp_score, exp_depth;
+  Move exp_move = Move::NONE;
+  if (GlobalExperience.probe(board.key, exp_score, exp_depth, exp_move)) {
+    if (exp_depth >= depth) {
+      return exp_score;
+    }
+  }
   // Check Probing of TT
   Move ttMove = Move::NONE;
   TTEntry tte;
@@ -714,13 +748,7 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   }
 
   // Apply Extension (Safety Clamp)
-  // Move depth processing to HERE if feasible, or pass singularExt logic down?
-  // Usually this extends the search of the TT move specifically, OR extends the
-  // *current* node. Standard logic: Extend the search of this node if the TT
-  // move is the only good one. Wait, Prometheus implementation structure is
-  // slightly different. depth passed to alpha_beta calls. Correct application:
-  // Update 'depth' before move loop? Yes.
-  depth += singularExt;
+  // depth += singularExt; // REMOVED: Applied specifically to TT move in loop
 
   // Internal Iterative Deepening (IID)
   int minDepth = pvNode ? Eval::IIDMinDepthPV : Eval::IIDMinDepthNonPV;
@@ -755,6 +783,12 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
   // Get static evaluation if we don't have it yet
   if (staticEval == 30001) {
     staticEval = Eval::evaluate(board, alpha, beta, depth);
+
+    // Scaling Doctrine: Eval Confidence
+    // "Eval weight should depend on depth... Early eval lies"
+    double confidence = std::min(1.0, depth / 10.0);
+    staticEval = (int)(staticEval * confidence);
+
     staticEval += get_correction(board.side_to_move(), board);
   }
 
@@ -763,9 +797,68 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     static_evals[ply] = staticEval;
   bool improving = (ply >= 2 && staticEval > static_evals[ply - 2]);
 
-  // ProbCut: Early cutoff with shallow verification
-  if (!pvNode && depth >= Eval::ProbcutMinDepth && std::abs(beta) < MATE &&
+  // Multi-Cut Pruning (Early Pruning)
+  if (!pvNode && depth >= Eval::MultiCutMinDepth && std::abs(beta) < MATE &&
       !inCheck) {
+    int betaHits = 0;
+    int reduce = Eval::MultiCutReduction;
+
+    // Adaptive Threshold
+    int adaptThreshold = Eval::MultiCutThreshold;
+    if (depth > 7)
+      adaptThreshold++;
+
+    int c_depth = depth - reduce;
+    if (c_depth < 1)
+      c_depth = 1;
+
+    // Use a small local move list for captures
+    // Optimization: Just generate all and filter
+    MoveList cList;
+    MoveGen::generate_all(board, cList);
+    score_moves(board, cList, Move::NONE, 0, Move::NONE);
+
+    // Sort/Pick just top M moves? Usually just try first few.
+    int trials = std::min(cList.count, 10);
+    for (int i = 0; i < trials; ++i) {
+      Move m = pick_next_move(cList, i);
+      if (m == Move::NONE)
+        break;
+
+      // Filter for captures only (Multi-Cut is for cut-nodes via tactics)
+      bool isCapture = (board.piece_on(m.to()) != NO_PIECE) ||
+                       (m.flags() == MoveFlags::EP_CAPTURE);
+      bool isPromotion = (m.flags() >= MoveFlags::PROMOTION_KNIGHT);
+      if (!isCapture && !isPromotion)
+        continue;
+
+      Board copy = board;
+      if (copy.make_move(m)) {
+        int score = -alpha_beta(copy, c_depth, ply + 1, -beta, -beta + 1, nodes,
+                                Move::NONE, Move::NONE, true, updateStats);
+
+        if (score >= beta) {
+          betaHits++;
+          if (betaHits >= adaptThreshold) {
+            return beta;
+          }
+        }
+      }
+    }
+  }
+
+  // ProbCut: Early cutoff with shallow verification
+  // Standard ProbCut logic
+  // TT verification: If TT says we fail low, don't try ProbCut (which checks
+  // for fail high)
+  bool probCutAllowed = true;
+  if (ttHit && tte.depth() >= depth - 4 && tte.type() == BOUND_UPPER &&
+      tte.score() < beta) {
+    probCutAllowed = false;
+  }
+
+  if (probCutAllowed && !pvNode && depth >= Eval::ProbcutMinDepth &&
+      std::abs(beta) < MATE && !inCheck) {
     int probBeta = beta + Eval::ProbcutMargin;
     int reducedDepth = depth - Eval::ProbcutReduction;
     if (reducedDepth < 1)
@@ -781,8 +874,31 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     }
   }
 
+  // Extended Futility Pruning
+  if (!pvNode && depth <= Eval::ExtendedFutilityMaxDepth && !inCheck &&
+      std::abs(beta) < MATE_SCORE &&
+      staticEval + Eval::ExtendedFutilityMargin + depth * 30 <= alpha) {
+    return alpha;
+  }
+
+  // Reverse Futility Pruning (Static Null Move)
+  if (!pvNode && depth <= Eval::ReverseFutilityMaxDepth && !inCheck &&
+      std::abs(beta) < MATE_SCORE &&
+      staticEval - Eval::ReverseFutilityMargin - depth * 30 >= beta) {
+    return beta;
+  }
+
   // Null Move Pruning
-  if (allowNull && !pvNode && depth >= 3 &&
+  // TT-Aware Verification: If TT says we fail low (Upper Bound < Beta),
+  // then NMP (which tries to fail high) is unlikely to succeed.
+  // Skipping NMP in these cases saves nodes.
+  bool ttAllowsNMP = true;
+  if (ttHit && tte.depth() >= depth - 3 && tte.type() == BOUND_UPPER &&
+      tte.score() < beta) {
+    ttAllowsNMP = false;
+  }
+
+  if (allowNull && ttAllowsNMP && !pvNode && depth >= 3 &&
       !board.is_square_attacked(
           Bitboards::lsb(board.pieces(KING, board.side_to_move())),
           ~board.side_to_move())) {
@@ -844,6 +960,27 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
     if (m == excludedMove)
       continue;
 
+    // Late Move Pruning (LMP)
+    // Prune quiet moves late in the search at low depths
+    if (!pvNode && !inCheck && depth <= 8) { // Max depth for LMP?
+      int lmpThreshold =
+          Eval::LmpBase +
+          depth * depth *
+              Eval::LmpDepthMultiplier; // Quadratic? Or Linear (depth * M)?
+      // Standard is Linear: (depth * M) / improving
+      if (improving)
+        lmpThreshold *= 2; // Allow more moves if improving? Or prune less?
+                           // threshold higher = prune less.
+
+      if (local_moves_searched > lmpThreshold) {
+        bool isTactical = (board.piece_on(m.to()) != NO_PIECE) ||
+                          (m.flags() >= MoveFlags::PROMOTION_KNIGHT);
+        if (!isTactical) {
+          continue; // Prune quiet move
+        }
+      }
+    }
+
     Board copy = board;
     if (copy.make_move(m)) {
       local_moves_searched++;
@@ -855,8 +992,14 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
       // moved). So allowNull = true.
 
       if (local_moves_searched == 1) {
-        score = -alpha_beta(copy, depth - 1, ply + 1, -beta, -alpha, nodes,
-                            Move::NONE, m, true, updateStats);
+        // PV Move or First Move
+        // Apply Singular Extension if applicable (TT Move)
+        int extension = 0;
+        if (m == ttMove)
+          extension = singularExt;
+
+        score = -alpha_beta(copy, depth - 1 + extension, ply + 1, -beta, -alpha,
+                            nodes, Move::NONE, m, true, updateStats);
       } else {
         // Late Move Reductions (LMR)
         int reduction = 0;
@@ -864,12 +1007,40 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
           reduction =
               LMRTable[std::min(depth, 63)][std::min(local_moves_searched, 63)];
 
-          if (m.flags() >= MoveFlags::PROMOTION_KNIGHT || board.see(m, 0) ||
-              m == killers[depth][0] || m == killers[depth][1]) {
+          // Thread scaling
+          if (thread_id == 0) {
+            if (reduction > 0)
+              reduction--;
+          } else {
+            reduction++;
+          }
+
+          // Tactical Un-Reduction (Safety)
+          // Do NOT reduce captures, checks, or killers as much (or at all)
+          bool isCapture = (board.piece_on(m.to()) != NO_PIECE) ||
+                           (m.flags() == MoveFlags::EP_CAPTURE);
+          bool isPromotion = (m.flags() >= MoveFlags::PROMOTION_KNIGHT);
+
+          if (isCapture || isPromotion) {
+            // Tactical: Reduce reduction significantly (or disable)
+            reduction = 0;
+          } else if (m == killers[depth][0] || m == killers[depth][1]) {
+            // Killers: Reduce less
             reduction /= 2;
           }
 
-          // PV nodes reduce less
+          // Counter-Move Heuristic: Reduce less for counter-move
+          if (prevMove != Move::NONE &&
+              m == counter_moves[board.side_to_move()][prevMove.to()]) {
+            reduction -= 2;
+          }
+
+          // SEE-based reduction modulation
+          if (!isCapture && !isPromotion && !board.see(m, -1)) {
+            reduction += 2;
+          }
+
+          // PV nodes reduce less (or not at all)
           if (pvNode)
             reduction -= Eval::LMRPVReduction;
 
@@ -882,19 +1053,15 @@ int SearchWorker::alpha_beta(Board &board, int depth, int ply, int alpha,
 
           // History LMR
           // Good history -> Reduce less
-          // Bad history -> Reduce more? Or just reduce less for good moves.
-          // History is typically -4096 to +4096
-          // int hist_score = history[board.side_to_move()][m.from()][m.to()];
-          // reduction -= hist_score / 2048;
+          int hist_score = history[board.side_to_move()][m.from()][m.to()];
+          reduction -=
+              hist_score / Eval::HistoryLmrDivisor; // HistoryLmrDivisor ~2000
 
           // Clamp again
           if (reduction < 0)
             reduction = 0;
 
-          // Negative Singular Extensions
-          // If the node is singular (one move is much better), other moves are
-          // likely bad. We revert the extension (since we extended the whole
-          // node) and add a penalty.
+          // Negative Singular Extensions logic kept (lines 962-970)
           if (singularExt > 0) {
             reduction += singularExt;
             reduction += 1;
@@ -1051,6 +1218,18 @@ void SearchWorker::iter_deep() {
   bestMove = Move::NONE; // Reset
   int score = 0;
 
+  // Instant Book Probe
+  int exp_score, exp_depth;
+  Move exp_move = Move::NONE;
+  if (GlobalExperience.probe(rootBoard.key, exp_score, exp_depth, exp_move)) {
+    if (exp_move != Move::NONE && thread_id == 0) {
+      std::cout << "info depth " << exp_depth << " score cp " << exp_score
+                << " pv " << exp_move.to_uci() << " book" << std::endl;
+      std::cout << "bestmove " << exp_move.to_uci() << std::endl;
+      return;
+    }
+  }
+
   // Reset nodes for this search
   nodes_searched = 0;
   // Timer.start_time is already initialized by Timer.init() in
@@ -1165,9 +1344,9 @@ void SearchWorker::iter_deep() {
     }
     std::cout << std::endl;
 
-    // Time Management Updates
-    if (!rootMoves.empty()) {
-      Timer.update_best_move(rootMoves[0].move, depth);
+    // Learning: Record Experience
+    if (thread_id == 0) {
+      GlobalExperience.record(rootBoard.key, score, depth, bestMove);
     }
 
     // Check Time

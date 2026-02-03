@@ -1,0 +1,91 @@
+{
+  "parameters": [
+    {
+      "name": "LazyEvalMargin",
+      "start": 150,
+      "min": 100,
+      "max": 250,
+      "c": 15,
+      "c_end": 7.5
+    },
+    {
+      "name": "NMPBaseReductionMG",
+      "start": 3,
+      "min": 2,
+      "max": 4,
+      "c": 0.2,
+      "c_end": 0.1
+    },
+    {
+      "name": "NMPBaseReductionEG",
+      "start": 3,
+      "min": 2,
+      "max": 4,
+      "c": 0.2,
+      "c_end": 0.1
+    },
+    {
+      "name": "AspirationWindow",
+      "start": 25,
+      "min": 15,
+      "max": 40,
+      "c": 2,
+      "c_end": 1
+    },
+    {
+      "name": "LMRBaseReduction",
+      "start": 75,
+      "min": 50,
+      "max": 100,
+      "c": 5,
+      "c_end": 2.5
+    },
+    {
+      "name": "LMRDepthDivisor",
+      "start": 225,
+      "min": 150,
+      "max": 300,
+      "c": 15,
+      "c_end": 7.5
+    },
+    {
+      "name": "IIDMinDepthPV",
+      "start": 6,
+      "min": 4,
+      "max": 8,
+      "c": 0.4,
+      "c_end": 0.2
+    },
+    {
+      "name": "IIDReductionPV",
+      "start": 2,
+      "min": 1,
+      "max": 3,
+      "c": 0.2,
+      "c_end": 0.1
+    },
+    {
+      "name": "EvalHysteresis",
+      "start": 5,
+      "min": 0,
+      "max": 15,
+      "c": 1.5,
+      "c_end": 0.75
+    }
+  ],
+  "spsa_settings": {
+    "iterations": 20,
+    "games_per_iteration": 20,
+    "alpha": 0.602,
+    "gamma": 0.101,
+    "A": 10
+  },
+  "test_settings": {
+    "engine_path": "../build/Prometheus.exe",
+    "baseline_path": "../baseline/Prometheus.exe",
+    "time_control": "0.05+0",
+    "opening_book": null,
+    "threads": 1,
+    "hash": 16
+  }
+}

@@ -6,12 +6,15 @@
 #include <string>
 #include <unordered_map>
 
+#include "../core/types.h"
+
 namespace Prometheus {
 namespace Search {
 
 struct ExperienceEntry {
   uint64_t key;
   int16_t score;
+  uint16_t move; // Store best move (raw data)
   uint8_t depth;
   uint8_t confidence;
   uint8_t last_generation;
@@ -25,8 +28,8 @@ public:
   void load(const std::string &filename);
   void save(const std::string &filename);
 
-  bool probe(uint64_t key, int &score, int &depth);
-  void record(uint64_t key, int score, int depth);
+  bool probe(uint64_t key, int &score, int &depth, Move &move);
+  void record(uint64_t key, int score, int depth, Move move);
   void decay();
 
 private:

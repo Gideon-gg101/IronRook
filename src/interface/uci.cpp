@@ -56,6 +56,18 @@ void loop() {
   Tuning::GlobalTuner.add_param("IIDRetryReduction", &Eval::IIDRetryReduction,
                                 1, 8, 1);
 
+  // --- Search Enhancements ---
+  Tuning::GlobalTuner.add_param("ExtendedFutilityMargin",
+                                &Eval::ExtendedFutilityMargin, 0, 500, 10);
+  Tuning::GlobalTuner.add_param("ExtendedFutilityMaxDepth",
+                                &Eval::ExtendedFutilityMaxDepth, 1, 10, 1);
+  Tuning::GlobalTuner.add_param("ReverseFutilityMargin",
+                                &Eval::ReverseFutilityMargin, 0, 500, 10);
+  Tuning::GlobalTuner.add_param("ReverseFutilityMaxDepth",
+                                &Eval::ReverseFutilityMaxDepth, 1, 10, 1);
+  Tuning::GlobalTuner.add_param("HistoryLmrDivisor", &Eval::HistoryLmrDivisor,
+                                100, 5000, 100);
+
   // --- Other Eval ---
   Tuning::GlobalTuner.add_param("OpenFileBonus", &Eval::OpenFileBonus, 0, 50,
                                 5);
@@ -95,7 +107,9 @@ void loop() {
                 << std::endl;
       std::cout << "option name UCI_Chess960 type check default false"
                 << std::endl;
-      std::cout << "option name ExperiencePath type string default <empty>"
+      std::cout << "option name ExperiencePath type string default IronBook.exp"
+                << std::endl;
+      std::cout << "option name Nodes type spin default 0 min 0 max 100000000"
                 << std::endl;
 
       // Print tunable parameters
@@ -104,7 +118,18 @@ void loop() {
       std::cout << "uciok" << std::endl;
 
       // Init default threads
-      Search::Threads.set_thread_count(1);
+      Search::Threads.init(1);
+
+      // Force load default Experience Book
+      if (!Search::Threads.exp_path.empty()) {
+        // DEBUG: Print current directory and book path
+        // Using std::filesystem requires C++17, let's use system("cd") or just
+        // trust the path
+        std::cerr << "Debug: Loading book from " << Search::Threads.exp_path
+                  << std::endl;
+        Search::GlobalExperience.load(Search::Threads.exp_path);
+        std::cerr << "Debug: Book loaded." << std::endl;
+      }
 
     } else if (token == "isready") {
       std::cout << "readyok" << std::endl;
@@ -186,6 +211,13 @@ void loop() {
             Search::Threads.exp_path = path;
             Search::GlobalExperience.load(path);
           }
+        } else if (name == "Nodes") {
+          ss >> val;
+          if (val == "value") {
+            int nodes;
+            ss >> nodes;
+            Search::Threads.default_nodes = nodes;
+          }
         } else {
           // Check for tunable evaluation parameters
           ss >> val; // This should be "value"
@@ -215,6 +247,8 @@ void loop() {
       break;
     } else if (token == "stop") {
       Search::Threads.stop();
+    } else if (token == "ponderhit") {
+      Search::Threads.ponderhit();
     } else if (token == "d") {
       std::cout << board.to_fen() << std::endl;
     } else if (token == "bench") {
@@ -308,6 +342,13 @@ void go(const std::string &command, Board &board) {
       ss >> limits.move_time;
     else if (token == "infinite")
       limits.infinite = true;
+    else if (token == "ponder")
+      limits.ponder = true;
+  }
+
+  // Apply default node limit if set
+  if (Search::Threads.default_nodes > 0 && limits.nodes == 0) {
+    limits.nodes = Search::Threads.default_nodes;
   }
 
   // Non-blocking start

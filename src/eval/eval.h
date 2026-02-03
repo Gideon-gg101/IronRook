@@ -42,7 +42,25 @@ extern int NmpTtMargin;       // Margin for TT-aware NMP pruning
 // Pawn Eval Parameters
 extern int PawnMajorityBonus;
 extern int CandidatePasserBonus;
-extern int PawnTensionBonus; // Maintain tension
+extern int PawnTensionBonus;    // Maintain tension
+extern int PawnBreakBonus;      // Potential pawn breaks
+extern int BackwardPawnPenalty; // Backward pawn on semi-open file
+
+// Color Complex & Bishop Interaction
+extern int GoodBishopBonus;
+extern int BadBishopPenalty;
+extern int ColorWeaknessPenalty;
+
+// King Safety - Pawn Storm
+extern int PawnStormBonus;
+
+// King Safety - Shield Degradation
+extern int Shield1;
+extern int Shield2;
+extern int MissingShieldPenalty;
+
+// Virtual King Safety
+extern int VirtualSafetyWeight;
 
 // LMR (Late Move Reductions) Parameters
 extern int LMRBaseReduction;  // Base formula multiplier (×0.01)
@@ -66,6 +84,7 @@ extern int IIDRetryReduction; // Reduction for IID Retry
 // Multi-Cut Pruning
 extern int MultiCutThreshold; // Number of beta cutoffs before multi-cut
 extern int MultiCutMinDepth;  // Minimum depth for multi-cut pruning
+extern int MultiCutReduction; // Depth reduction for multi-cut verification
 
 // Probcut
 extern int ProbcutMargin;    // Beta margin for probcut
@@ -80,6 +99,25 @@ extern int FutilityMaxDepth; // Maximum depth for futility pruning
 extern int AspirationWindow; // Initial window size
 extern int AspirationGrowth; // Window growth per fail
 extern int AspirationPanic;  // Panic threshold for wide search
+
+// Extended Futility Pruning
+extern int ExtendedFutilityMargin;   // Margin for extended FP
+extern int ExtendedFutilityMaxDepth; // Max depth to apply extended FP
+
+// Reverse Futility Pruning
+extern int ReverseFutilityMargin;   // Margin for RFP
+extern int ReverseFutilityMaxDepth; // Max depth for RFP
+
+// History LMR
+// extern int HistoryLmrDivisor; // Defined earlier? No, check line 39. Oh, line
+// 39 has it. Wait, I see "extern int HistoryLmrDivisor;" at line 39 in the
+// original file view. Let me verify that. Line 39: extern int
+// HistoryLmrDivisor; // Divisor for history reduction So I don't need to add it
+// here. I just need Extended/Reverse Futility.
+
+// Late Move Pruning
+extern int LmpBase;
+extern int LmpDepthMultiplier;
 
 // Verified Null Move Pruning Parameters
 extern int NmpBaseReduction;

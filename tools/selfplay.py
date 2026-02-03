@@ -62,19 +62,31 @@ def play_game(engine1, engine2, time_limit=0.1):
 
 def main():
     if len(sys.argv) < 4:
-        print("Usage: python selfplay.py <engine_path> <output.pgn> <num_games>")
+        print("Usage: python selfplay.py <engine_path> <output.pgn> <num_games> [experience_file]")
         return
 
     engine_path = sys.argv[1]
     output_file = sys.argv[2]
     num_games = int(sys.argv[3])
+    experience_file = sys.argv[4] if len(sys.argv) > 4 else None
 
     print(f"Starting self-play: {num_games} games using {engine_path}")
+    if experience_file:
+        print(f"Learning enabled: {experience_file}")
 
     # Initialize engines ONCE
     try:
         engine1 = chess.engine.SimpleEngine.popen_uci(engine_path)
         engine2 = chess.engine.SimpleEngine.popen_uci(engine_path)
+        
+        # Configure Experience if requested
+        if experience_file:
+            try:
+                engine1.configure({"ExperiencePath": experience_file})
+                engine2.configure({"ExperiencePath": experience_file})
+            except Exception as e:
+                print(f"Warning: Failed to configure ExperiencePath: {e}")
+
     except Exception as e:
         print(f"Failed to start engines: {e}")
         return

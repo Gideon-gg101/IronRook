@@ -44,18 +44,19 @@ void ExperienceCache::save(const std::string &filename) {
             << std::endl;
 }
 
-bool ExperienceCache::probe(uint64_t key, int &score, int &depth) {
+bool ExperienceCache::probe(uint64_t key, int &score, int &depth, Move &move) {
   std::lock_guard<std::mutex> lock(mutex);
   auto it = entries.find(key);
   if (it != entries.end()) {
     score = it->second.score;
     depth = it->second.depth;
+    move = Move(it->second.move);
     return true;
   }
   return false;
 }
 
-void ExperienceCache::record(uint64_t key, int score, int depth) {
+void ExperienceCache::record(uint64_t key, int score, int depth, Move move) {
   // Only record significant depths to avoid bloating
   if (depth < 8)
     return;
@@ -63,12 +64,15 @@ void ExperienceCache::record(uint64_t key, int score, int depth) {
   std::lock_guard<std::mutex> lock(mutex);
   auto it = entries.find(key);
   if (it == entries.end()) {
-    entries[key] = {key, (int16_t)score, (uint8_t)depth, 1, 0};
+    entries[key] = {key, (int16_t)score, move.data, (uint8_t)depth, 1, 0};
     modified = true;
   } else {
+    // Replace if deeper, or same depth but different score?
+    // Always trust deeper search.
     if (depth >= it->second.depth) {
       it->second.score = (int16_t)score;
       it->second.depth = (uint8_t)depth;
+      it->second.move = move.data;
       if (it->second.confidence < 255)
         it->second.confidence++;
       modified = true;

@@ -18,7 +18,8 @@ class GameRunner:
     """Runs games between two engine configurations"""
     
     def __init__(self, engine_path: str, time_control: str = "10+0.1", 
-                 threads: int = 1, hash: int = 64):
+                 threads: int = 1, hash: int = 64, concurrency: int = 1,
+                 cutechess_path: str = None, opening_book: str = None):
         """
         Initialize game runner
         
@@ -27,16 +28,29 @@ class GameRunner:
             time_control: Time control in format "base+inc" (e.g., "10+0.1")
             threads: Number of threads per engine
             hash: Hash table size in MB
+            concurrency: Number of concurrent games to run (for cutechess)
+            cutechess_path: Path to cutechess-cli executable (optional)
+            opening_book: Path to opening book file (optional)
         """
         self.engine_path = engine_path
         self.time_control = time_control
         self.threads = threads
         self.hash = hash
+        self.concurrency = concurrency
+        self.cutechess_path = cutechess_path or 'cutechess-cli'
+        self.opening_book = opening_book
         
         # Parse time control
         parts = time_control.split('+')
-        self.base_time = int(float(parts[0]) * 1000)  # Convert to ms
-        self.increment = int(float(parts[1]) * 1000) if len(parts) > 1 else 0
+        # If parts[0] is not a number (e.g., 'nodes=3000'), handle gracefully
+        try:
+            val = float(parts[0])
+            self.base_time = int(val * 1000)  # Convert to ms
+            self.increment = int(float(parts[1]) * 1000) if len(parts) > 1 else 0
+        except ValueError:
+            # Likely 'nodes=X' or 'depth=X'
+            self.base_time = 0
+            self.increment = 0
         
         # Check if cutechess-cli is available
         self.has_cutechess = self._check_cutechess()
@@ -48,7 +62,7 @@ class GameRunner:
     def _check_cutechess(self) -> bool:
         """Check if cutechess-cli is available"""
         try:
-            result = subprocess.run(['cutechess-cli', '--version'], 
+            result = subprocess.run([self.cutechess_path, '--version'], 
                                     capture_output=True, timeout=5)
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -78,7 +92,8 @@ class GameRunner:
         
         # Build cutechess-cli command
         cmd = [
-            'cutechess-cli',
+            self.cutechess_path,
+            '-concurrency', str(self.concurrency),
             '-engine', f'cmd={self.engine_path}', 
             f'initstr=importparams {params1}',
             'proto=uci', f'tc={self.time_control}',
@@ -92,6 +107,11 @@ class GameRunner:
             '-rounds', '1',
             '-pgnout', 'games.pgn'
         ]
+
+        if self.opening_book:
+            ext = os.path.splitext(self.opening_book)[1].lower()
+            fmt = 'epd' if ext == '.epd' else 'pgn'
+            cmd.extend(['-openings', f'file={self.opening_book}', f'format={fmt}', 'order=random'])
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)

@@ -1,0 +1,45 @@
+{
+    "LaunchTemplateName": "prometheus-phase1-worker",
+    "VersionDescription": "Worker template for Phase 1 SPSA tuning",
+    "LaunchTemplateData": {
+        "ImageId": "ami-0532be01f26a3de55",
+        "InstanceType": "t3.micro",
+        "IamInstanceProfile": {
+            "Name": "PrometheusS3Access"
+        },
+        "BlockDeviceMappings": [
+            {
+                "DeviceName": "/dev/xvda",
+                "Ebs": {
+                    "VolumeSize": 20,
+                    "VolumeType": "gp3",
+                    "DeleteOnTermination": true
+                }
+            }
+        ],
+        "UserData": "",
+        "TagSpecifications": [
+            {
+                "ResourceType": "instance",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Prometheus-Worker"
+                    },
+                    {
+                        "Key": "Phase",
+                        "Value": "1"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "SpotFleet"
+                    }
+                ]
+            }
+        ],
+        "MetadataOptions": {
+            "HttpTokens": "required",
+            "HttpPutResponseHopLimit": 1
+        }
+    }
+}

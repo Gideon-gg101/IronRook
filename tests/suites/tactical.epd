@@ -1,0 +1,35 @@
+# Tactical Test Suite - Win at Chess & Bratko-Kopec
+# Format: FEN; bm best_move; id "description";
+
+# Win at Chess tactical positions
+r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1; bm Bxf7+; id "Italian Game fork";
+rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 0 1; bm Nf6; id "Sicilian Defense";
+r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1; bm Nxe5; id "Greco variation";
+2kr3r/ppp2ppp/2n1bn2/2bpq3/8/1PN1PN2/P1PP1PPP/R1BQKB1R w KQ - 0 1; bm Nxd5; id "Tactical blow";
+r1bqr1k1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQR1K1 w - - 0 1; bm Bxf7+; id "Discovery attack";
+
+# Bratko-Kopec positions
+1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - 0 1; bm Qd1+; id "BK.01 Mate in 3";
+3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - 0 1; bm d5; id "BK.02 Discovery";
+2q1rr1k/3bbnnp/p2p1pp1/2pPp3/PpP1P1P1/1P2BNNP/2BQ1PRK/7R b - - 0 1; bm f5; id "BK.03 Pawn break";
+rnbqkb1r/p3pppp/1p6/2ppP3/3N4/2P5/PPP1QPPP/R1B1KB1R w KQkq - 0 1; bm e6; id "BK.04 Pawn breakthrough";
+r1b2rk1/2q1b1pp/p2ppn2/1p6/3QP3/1BN1B3/PPP3PP/R4RK1 w - - 0 1; bm Nd5; id "BK.05 Knight outpost";
+
+# Additional tactical patterns
+1r4k1/7p/5np1/3p3n/8/2NB4/7P/3N1RK1 w - - 0 1; bm Nf4; id "Knight fork";
+3r2k1/p2r1p1p/1p2p1p1/7n/2qNP2P/P3Q1P1/1P3PB1/2RR2K1 b - - 0 1; bm Rxd4; id "Exchange sacrifice";
+r2qr1k1/1p3ppp/p1n1pn2/8/Pb1NP3/1B3N2/1P2QPPP/R4RK1 w - - 0 1; bm Nxe6; id "Piece sacrifice";
+
+# More Win at Chess positions
+r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1; bm Bxf7+; id "Legal's mate theme";
+rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1; bm Ng5; id "Fried liver attack";
+r2qkb1r/ppp2ppp/2n2n2/3pp3/3PP1b1/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 1; bm dxe5; id "Center control";
+r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 1; bm Bxf7+; id "Clearance sacrifice";
+2kr3r/pp3ppp/2n1b3/q1pPp3/2P1P3/2N3P1/PPQ2PBP/R3K2R w KQ - 0 1; bm d6; id "Pawn breakthrough";
+3r1rk1/pp3ppp/1qn2P2/8/3Q4/B7/P4PPP/3RR1K1 w - - 0 1; bm Qg4; id "Mating attack";
+rnb1k2r/pp1n1ppp/4p3/qBP5/1b6/2N2N2/PP2PPPP/R1BQK2R w KQkq - 0 1; bm c6; id "Pawn storm";
+
+# Advanced tactical motifs
+r1bqr1k1/1p1nbppp/p2p1n2/4p3/P3P3/2NB1N1P/1PP2PP1/R1BQR1K1 w - - 0 1; bm Nxe5; id "Removing defender";
+r2q1rk1/ppp2ppp/2n1bn2/2bpp3/4PP2/2PP1NP1/PP1N2BP/R1BQ1RK1 b - - 0 1; bm Bxf3; id "Destroying king shelter";
+

@@ -69,6 +69,8 @@ class SPSATuner:
         self.opening_book = test_settings.get('opening_book', None)
         self.threads = test_settings.get('threads', 1)
         self.hash = test_settings.get('hash', 64)
+        self.concurrency = test_settings.get('concurrency', 1)
+        self.cutechess_path = test_settings.get('cutechess_path', None)
         
         
         # Logging
@@ -81,7 +83,9 @@ class SPSATuner:
             engine_path=self.engine_path,
             time_control=self.time_control,
             threads=self.threads,
-            hash=self.hash
+            hash=self.hash,
+            concurrency=self.concurrency,
+            cutechess_path=self.cutechess_path
         )
         
         print(f"SPSA Tuner initialized with {len(self.params)} parameters")

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <string>
+#include <vector>
 
 namespace Prometheus {
 namespace Tuning {
@@ -68,6 +70,7 @@ void ParameterTuner::register_params() {
   // Multi-Cut Pruning
   add_param("MultiCutThreshold", &Eval::MultiCutThreshold, 2, 5);
   add_param("MultiCutMinDepth", &Eval::MultiCutMinDepth, 3, 6);
+  add_param("MultiCutReduction", &Eval::MultiCutReduction, 1, 4);
 
   // Probcut
   add_param("ProbcutMargin", &Eval::ProbcutMargin, 100, 300);
@@ -82,6 +85,34 @@ void ParameterTuner::register_params() {
   add_param("AspirationWindow", &Eval::AspirationWindow, 10, 50);
   add_param("AspirationGrowth", &Eval::AspirationGrowth, 5, 30);
   add_param("AspirationPanic", &Eval::AspirationPanic, 20, 100);
+
+  // Late Move Pruning
+  add_param("LmpBase", &Eval::LmpBase, 0, 2);
+  add_param("LmpDepthMultiplier", &Eval::LmpDepthMultiplier, 4, 12);
+  // Late Move Pruning
+  add_param("LmpBase", &Eval::LmpBase, 0, 2);
+  add_param("LmpDepthMultiplier", &Eval::LmpDepthMultiplier, 4, 12);
+
+  // Pawn Evaluation
+  add_param("PawnMajorityBonus", &Eval::PawnMajorityBonus, 0, 40);
+  add_param("CandidatePasserBonus", &Eval::CandidatePasserBonus, 0, 50);
+  add_param("PawnTensionBonus", &Eval::PawnTensionBonus, 0, 30);
+  add_param("PawnBreakBonus", &Eval::PawnBreakBonus, 0, 40);
+  add_param("BackwardPawnPenalty", &Eval::BackwardPawnPenalty, 0, 50);
+
+  // Color Complex & Bishops
+  add_param("GoodBishopBonus", &Eval::GoodBishopBonus, 0, 50);
+  add_param("BadBishopPenalty", &Eval::BadBishopPenalty, 0, 50);
+  add_param("ColorWeaknessPenalty", &Eval::ColorWeaknessPenalty, 0, 40);
+
+  // King Safety
+  add_param("PawnStormBonus", &Eval::PawnStormBonus, 0, 40);
+
+  // King Safety - Shield
+  add_param("Shield1", &Eval::Shield1, 0, 50);
+  add_param("Shield2", &Eval::Shield2, 0, 30);
+  add_param("MissingShieldPenalty", &Eval::MissingShieldPenalty, 0, 100);
+  add_param("VirtualSafetyWeight", &Eval::VirtualSafetyWeight, 0, 100);
 }
 
 void ParameterTuner::export_params(const std::string &filename) {

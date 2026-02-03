@@ -1,4 +1,5 @@
 #include "time_manager.h"
+#include <algorithm>
 #include <iostream>
 
 namespace Prometheus {
@@ -6,15 +7,76 @@ namespace Search {
 
 TimeManager Timer;
 
-void TimeManager::init(const SearchLimits &limits, Color sideToMove) {
+// Helper: Calculate game phase based on piece count
+static double calculate_game_phase(const Board &board) {
+  int piece_count = Bitboards::popcount(board.all_pieces());
+  // Opening/Midgame: 32-16 pieces → phase 0.0-0.5
+  // Endgame: 16-6 pieces → phase 0.5-1.0
+  if (piece_count >= 16) {
+    return (32 - piece_count) / 32.0;
+  } else {
+    return 0.5 + (16 - std::max(6, piece_count)) / 20.0;
+  }
+}
+
+// Helper: Get phase-based time allocation factor
+static double get_phase_factor(double phase) {
+  // Opening/Midgame (phase 0-0.5): 1/20 fast play
+  // Transitional (phase 0.5-0.7): 1/15 more time
+  // Endgame (phase 0.7-1.0): 1/10 precise calculation
+  if (phase < 0.5) {
+    return 1.0 / 20.0;
+  } else if (phase < 0.7) {
+    return 1.0 / 15.0;
+  } else {
+    return 1.0 / 10.0;
+  }
+}
+
+// Helper: Gradual low-time factor
+static double low_time_factor(int time_left, int original_time_control) {
+  if (original_time_control <= 0) {
+    return 1.0 / 40.0; // Default conservative
+  }
+
+  double ratio = (double)time_left / original_time_control;
+  if (ratio > 0.5) {
+    return 1.0; // No scaling
+  } else if (ratio > 0.1) {
+    // Linear interpolation from 1.0 → 0.5 as time decreases
+    double t = (ratio - 0.1) / 0.4;
+    return 1.0 * t + 0.5 * (1 - t);
+  } else {
+    return 0.5; // Very conservative
+  }
+}
+
+int TimeManager::smooth_time_allocation(int raw_allocation) {
+  if (last_allocated_time == 0) {
+    last_allocated_time = raw_allocation;
+    return raw_allocation;
+  }
+
+  // EMA: smoothed = alpha * current + (1-alpha) * previous
+  int smoothed = (int)(smoothing_alpha * raw_allocation +
+                       (1 - smoothing_alpha) * last_allocated_time);
+  last_allocated_time = smoothed;
+  return smoothed;
+}
+
+void TimeManager::init(const SearchLimits &limits, Color sideToMove,
+                       const Board &board) {
   start_time = std::chrono::high_resolution_clock::now();
   nodes_since_check = 0;
   infinite = limits.infinite;
   extension_factor = 1.0;
+  volatility = 0.0;
 
   if (infinite || limits.depth > 0 || limits.nodes > 0) {
     soft_limit = 2000000000; // Effectively infinite
     hard_limit = 2000000000;
+    if (limits.ponder)
+      infinite = true;
     return;
   }
 
@@ -33,14 +95,20 @@ void TimeManager::init(const SearchLimits &limits, Color sideToMove) {
   // Default: timed game
   int time_left = (sideToMove == WHITE) ? limits.white_time : limits.black_time;
   int inc = (sideToMove == WHITE) ? limits.white_inc : limits.black_inc;
-  int moves_to_go = limits.moves_to_go;
 
-  // Allocation logic: More aggressive use of time in midgame
-  double factor = 1.0 / 20.0;
-  if (time_left < 60000)
-    factor = 1.0 / 40.0; // Conserve time when low
+  // Phase-based allocation with endgame awareness
+  double game_phase = calculate_game_phase(board);
+  double base_factor = get_phase_factor(game_phase);
 
-  soft_limit = (int)(time_left * factor) + inc;
+  // Apply low-time scaling
+  int original_tc = time_left + inc * 40; // Estimate original time control
+  double lt_factor = low_time_factor(time_left, original_tc);
+
+  // Calculate raw allocation
+  int raw_allocation = (int)(time_left * base_factor * lt_factor) + inc;
+
+  // Apply time smoothing
+  soft_limit = smooth_time_allocation(raw_allocation);
 
   // Safety context
   hard_limit = time_left - 50 - move_overhead;
@@ -60,6 +128,14 @@ void TimeManager::init(const SearchLimits &limits, Color sideToMove) {
     hard_limit = limits.move_time - move_overhead;
     original_soft_limit = soft_limit;
   }
+
+  if (limits.ponder)
+    infinite = true;
+}
+
+void TimeManager::on_ponderhit() {
+  start_time = std::chrono::high_resolution_clock::now();
+  infinite = false;
 }
 
 void TimeManager::extend_time(double factor) {
@@ -80,15 +156,14 @@ void TimeManager::update_best_move(Move m, int depth) {
     last_best_move = m;
     stability_counter = 0;
 
-    // If best move changes at high depth (> 60% of time used or depth > 8?)
-    // Let's use a simple heuristic: if depth > 7 and we have used > 50% of
-    // soft_limit
-    if (depth > 7) {
-      long long t = elapsed();
-      if (t > soft_limit * 0.5) {
-        extend_time(panic_factor);
-      }
-    }
+    // Volatility: Change at higher depth implies instability
+    // Formula: accumulated volatility += depth * depth
+    volatility += depth * depth;
+
+    // User Formula: time *= 1 + min(0.6, volatility / 200.0);
+    double vol_factor = 1.0 + std::min(0.6, volatility / 200.0);
+    extend_time(vol_factor);
+
   } else {
     stability_counter++;
   }
